@@ -313,7 +313,12 @@
     padding:9px 12px;
     display:flex;
     flex-direction:column;
-    justify-content:center;
+    justify-content:space-between;
+    gap:3px;
+  }
+  .card .qline{
+    display:flex;
+    flex-direction:column;
     gap:3px;
   }
   .card .qno{
@@ -333,7 +338,7 @@
     font-size:12.5px;
     color:var(--accent-red);
     font-weight:700;
-    min-height:1.2em;
+    min-height:1.7em;
   }
   .card .a.blank{
     border-bottom:1px solid var(--line-strong);
@@ -363,6 +368,7 @@
   }
 
   /* ---------- PRINT ---------- */
+  @page{ size:A4; margin:10mm; }
   @media print{
     body{ background:#fff; }
     header.top, .panel.sticky, .toolbar, footer.app-foot, .no-print{ display:none !important; }
@@ -370,9 +376,30 @@
     .layout{ display:block; }
     .panel{ box-shadow:none; border-radius:0; padding:0; }
     .panel::before{ display:none; }
-    .cards{ grid-template-columns:repeat(2,1fr); }
-    .card{ break-inside:avoid; border-color:#999; }
-    .meta-line{ border-color:#999; }
+    .worksheet-head{ font-size:14px; }
+    .worksheet-sub{ font-size:10px; margin-top:1px; }
+    .meta-line{ border-color:#999; margin:6px 0 8px; padding-bottom:6px; }
+    .cards{ grid-template-columns:repeat(5,1fr); gap:6px 8px; }
+    .card{ break-inside:avoid; border-color:#999; min-height:48px; }
+    .card .ring{ width:10px; border-right:none; }
+    .card .ring::before, .card .ring::after{ width:4px; height:4px; }
+    .card .ring::before{ top:14px; }
+    .card .ring::after{ bottom:14px; }
+    .card .body{ padding:6px; gap:3px; justify-content:space-between; }
+    .card .qline{ gap:3px; }
+    .card .qno{
+      font-size:8px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .card .q, .card .a{
+      white-space:normal;
+      overflow-wrap:anywhere;
+      line-height:1.15;
+    }
+    .card .q{ font-size:var(--fit-size, 9px); }
+    .card .a{ font-size:var(--fit-size, 8px); min-height:1.6em; }
     .answers-page{ page-break-before:always; }
   }
 </style>
@@ -407,11 +434,12 @@
       <div class="hint">「サンプルで試す」は動作確認用のダミー単語（学習書とは無関係）が入ります。</div>
 
       <div class="btn-row" style="margin-top:10px;">
-        <button class="btn btn-ghost" id="saveBtn">💾 データを保存(json)</button>
+        <button class="btn btn-ghost" id="saveBtn">💾 保存(JSON)</button>
+        <button class="btn btn-ghost" id="saveCsvBtn">💾 保存(CSV)</button>
         <button class="btn btn-ghost" id="loadBtn">📂 データを読込</button>
-        <input type="file" id="loadFile" accept="application/json" style="display:none;">
+        <input type="file" id="loadFile" accept="application/json,.json,.csv,text/csv" style="display:none;">
       </div>
-      <div class="hint">保存しておくと、次回訪問時に読込ボタンから同じ単語データを使えます（ブラウザには保存されません）。</div>
+      <div class="hint">保存しておくと、次回訪問時に読込ボタンから同じ単語データを使えます（JSON・CSVどちらのファイルも読込可能／ブラウザには保存されません）。</div>
 
       <div class="status" id="statusBox">
         <div class="dot"></div>
@@ -546,21 +574,92 @@ $('saveBtn').addEventListener('click', ()=>{
   URL.revokeObjectURL(url);
 });
 
+function toCsvField(s){
+  s = String(s);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+function wordBankToCsv(bank){
+  return bank.map(w=>[w.no, toCsvField(w.en), toCsvField(w.ja)].join(',')).join('\r\n');
+}
+
+$('saveCsvBtn').addEventListener('click', ()=>{
+  if(wordBank.length===0){ alert('保存する単語データがありません。'); return; }
+  const csv = wordBankToCsv(wordBank);
+  const blob = new Blob(['﻿' + csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tango_data.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function parseCsvLine(line){
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(line[i+1] === '"'){ cur += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        cur += c;
+      }
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ result.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  result.push(cur);
+  return result.map(s=>s.trim());
+}
+
+function parseCsvText(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
+  const items = [];
+  for(const line of lines){
+    const parts = parseCsvLine(line);
+    if(parts.length < 3) continue;
+    const no = parseInt(parts[0], 10);
+    const en = parts[1];
+    const ja = parts.slice(2).join(' / ');
+    if(!isNaN(no) && en){
+      items.push({no, en, ja});
+    }
+  }
+  return items;
+}
+
 $('loadBtn').addEventListener('click', ()=> $('loadFile').click());
 $('loadFile').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
+  const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
   const reader = new FileReader();
   reader.onload = (ev)=>{
     try{
-      const data = JSON.parse(ev.target.result);
-      if(Array.isArray(data)){
-        wordBank = data.filter(w=>w && w.no && w.en);
-        $('dataInput').value = wordBank.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
-        updateStatus();
+      let data;
+      if(isCsv){
+        data = parseCsvText(ev.target.result);
+        if(data.length === 0){
+          alert('CSVファイルから単語データを読み取れませんでした。\n「番号,英単語,和訳」の形式で入力してください。');
+          return;
+        }
       } else {
-        alert('ファイルの形式が正しくありません。');
+        const parsed = JSON.parse(ev.target.result);
+        if(!Array.isArray(parsed)){
+          alert('ファイルの形式が正しくありません。');
+          return;
+        }
+        data = parsed.filter(w=>w && w.no && w.en);
       }
+      wordBank = data;
+      $('dataInput').value = wordBank.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
+      updateStatus();
     }catch(err){
       alert('ファイルを読み込めませんでした: ' + err.message);
     }
@@ -626,16 +725,22 @@ function renderWorksheet(mode, start, end){
   const today = new Date();
   const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
 
-  const cardsHtml = currentQuiz.map(item=>`
+  const cardsHtml = currentQuiz.map(item=>{
+    const qFit = fitFontSize(item.q, 9, 6, 3);
+    const aFit = fitFontSize(item.a, 8, 5.5, 3);
+    return `
     <div class="card">
       <div class="ring"></div>
       <div class="body">
-        <div class="qno">No.${item.idx} <span style="opacity:.6">(収録${item.no})</span></div>
-        <div class="q">${escapeHtml(item.q)}</div>
-        <div class="a ${showAnswers ? '' : 'blank'}">${escapeHtml(item.a)}</div>
+        <div class="qline">
+          <div class="qno">No.${item.idx} <span style="opacity:.6">(収録${item.no})</span></div>
+          <div class="q" style="--fit-size:${qFit}px">${formatCardText(item.q)}</div>
+        </div>
+        <div class="a ${showAnswers ? '' : 'blank'}" style="--fit-size:${aFit}px">${formatCardText(item.a)}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   area.innerHTML = `
     <div class="worksheet-head">単語テスト（収録番号 ${start}〜${end}）</div>
@@ -652,6 +757,35 @@ function renderWorksheet(mode, start, end){
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// 全角文字を1、半角文字を0.55として文字列の見た目の幅を概算する
+function visualWidth(s){
+  let w = 0;
+  for(const ch of String(s)){
+    w += /[　-ヿ㐀-䶿一-鿿＀-￯]/.test(ch) ? 1 : 0.55;
+  }
+  return w || 1;
+}
+
+// ①②③...の丸数字の直前で区切り、区切られた語義ごとに改行して表示するための分割
+function splitByCircledNumbers(s){
+  return String(s).split(/(?=[①-⑳])/).filter(p=>p.length>0);
+}
+
+function formatCardText(s){
+  return splitByCircledNumbers(s).map(escapeHtml).join('<br>');
+}
+
+// 印刷時のカード内テキスト幅（px目安）に収まるようフォントサイズを逆算する。
+// 丸数字で改行される場合は、一番長い語義（1行分）が収まる大きさを基準にする。
+const PRINT_CARD_TEXT_PX = 112;
+function fitFontSize(text, basePx, minPx, maxLines){
+  const segments = splitByCircledNumbers(text);
+  const size = segments.length > 1
+    ? PRINT_CARD_TEXT_PX / Math.max(...segments.map(visualWidth))
+    : (PRINT_CARD_TEXT_PX * maxLines) / visualWidth(text);
+  return Math.round(Math.min(basePx, Math.max(minPx, size)) * 10) / 10;
 }
 
 $('toggleAnsBtn').addEventListener('click', ()=>{
@@ -671,7 +805,7 @@ $('printBtn').addEventListener('click', ()=>{
   const end = parseInt($('rangeEnd').value,10);
   const originalShow = showAnswers;
 
-  showAnswers = false;
+  showAnswers = originalShow;
   renderWorksheet(mode, start, end);
   const questionsHtml = $('worksheetArea').innerHTML;
 
