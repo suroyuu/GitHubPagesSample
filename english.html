@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>単語カード出題メーカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink-navy:#1F2A44;
+    --ink-navy-2:#2E3B5C;
+    --paper:#FBF7EE;
+    --paper-2:#F3EDDD;
+    --line:#D8CFC0;
+    --line-strong:#B9AD97;
+    --accent-red:#C24B3F;
+    --accent-red-dark:#A23A30;
+    --accent-gold:#B98A2E;
+    --text-muted:#6B6558;
+    --ring:#EDE6D3;
+    --shadow: 0 10px 30px rgba(31,42,68,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--ink-navy), var(--ink-navy-2));
+    color:var(--ink-navy);
+    font-family:'Zen Kaku Gothic New', sans-serif;
+    min-height:100vh;
+  }
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    padding:36px 20px 80px;
+  }
+  header.top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    color:var(--paper);
+    margin-bottom:26px;
+    padding:0 4px;
+  }
+  header.top .title{
+    font-family:'Shippori Mincho', serif;
+    font-weight:700;
+    font-size:26px;
+    letter-spacing:.04em;
+  }
+  header.top .title small{
+    display:block;
+    font-family:'Zen Kaku Gothic New',sans-serif;
+    font-weight:500;
+    font-size:12.5px;
+    color:#C7CEE0;
+    letter-spacing:.08em;
+    margin-top:4px;
+  }
+  header.top .badge{
+    font-size:11.5px;
+    color:#C7CEE0;
+    border:1px solid rgba(255,255,255,.25);
+    padding:5px 10px;
+    border-radius:999px;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width:880px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--paper);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:22px 22px 24px;
+    position:relative;
+    overflow:hidden;
+  }
+  .panel::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 27px,
+      var(--line) 28px
+    );
+    opacity:.35;
+    pointer-events:none;
+  }
+  .panel > *{ position:relative; }
+  .panel.sticky{ position:sticky; top:20px; }
+
+  h2.sec{
+    font-family:'Shippori Mincho', serif;
+    font-size:16.5px;
+    font-weight:700;
+    margin:0 0 4px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  h2.sec .num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:22px;height:22px;
+    border-radius:50%;
+    background:var(--ink-navy);
+    color:var(--paper);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:12px;
+    font-weight:700;
+  }
+  .sec-desc{
+    font-size:12px;
+    color:var(--text-muted);
+    margin:0 0 14px;
+    line-height:1.6;
+  }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink-navy-2);
+    margin-bottom:6px;
+    letter-spacing:.02em;
+  }
+  textarea, input[type=text], input[type=number]{
+    width:100%;
+    border:1px solid var(--line-strong);
+    background:#fff;
+    border-radius:8px;
+    padding:9px 10px;
+    font-size:13.5px;
+    font-family:'Zen Kaku Gothic New',sans-serif;
+    color:var(--ink-navy);
+  }
+  textarea{
+    min-height:110px;
+    resize:vertical;
+    font-family:'Space Grotesk','Zen Kaku Gothic New',monospace;
+    line-height:1.55;
+  }
+  textarea:focus, input:focus{
+    outline:2px solid var(--accent-gold);
+    outline-offset:1px;
+  }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:none;
+    border-radius:8px;
+    padding:10px 14px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Zen Kaku Gothic New',sans-serif;
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--ink-navy); color:var(--paper); }
+  .btn-primary:hover{ box-shadow:0 4px 12px rgba(31,42,68,.35); }
+  .btn-ghost{ background:transparent; color:var(--ink-navy-2); border:1px solid var(--line-strong); }
+  .btn-ghost:hover{ background:var(--paper-2); }
+  .btn-red{ background:var(--accent-red); color:#fff; }
+  .btn-red:hover{ background:var(--accent-red-dark); }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .btn-block{ width:100%; }
+  .hint{ font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.5;}
+
+  .status{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--paper-2);
+    border:1px dashed var(--line-strong);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:12.5px;
+    margin-bottom:14px;
+  }
+  .status .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent-red);
+    flex:none;
+  }
+  .status.ok .dot{ background:#3E7A4E; }
+  .status b{ color:var(--ink-navy); }
+
+  fieldset{ border:none; padding:0; margin:0 0 14px; }
+  .choice{
+    display:flex;
+    gap:8px;
+  }
+  .choice label{
+    flex:1;
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    padding:10px 8px;
+    text-align:center;
+    font-size:12.5px;
+    font-weight:700;
+    cursor:pointer;
+    background:#fff;
+    color:var(--ink-navy-2);
+  }
+  .choice input{ display:none; }
+  .choice input:checked + span{ color:var(--accent-red); }
+  .choice label:has(input:checked){
+    border-color:var(--accent-red);
+    background:#FBEDEA;
+    color:var(--accent-red);
+  }
+  .checkline{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--ink-navy-2);}
+
+  /* ---- main preview column ---- */
+  .toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:6px;
+  }
+  .worksheet-head{
+    font-family:'Shippori Mincho',serif;
+    font-size:17px;
+    font-weight:700;
+    color:var(--ink-navy);
+  }
+  .worksheet-sub{
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:2px;
+  }
+  .meta-line{
+    display:flex;
+    gap:22px;
+    font-size:12px;
+    color:var(--ink-navy-2);
+    margin:14px 0 18px;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
+  .meta-line span b{ color:var(--ink-navy); }
+  .name-date{
+    display:flex;
+    gap:18px;
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .name-date .box{
+    border-bottom:1px solid var(--ink-navy-2);
+    min-width:120px;
+    display:inline-block;
+    margin-left:6px;
+  }
+
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px 16px;
+  }
+  .card{
+    display:flex;
+    align-items:stretch;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+    min-height:56px;
+  }
+  .card .ring{
+    flex:none;
+    width:26px;
+    background:
+      repeating-linear-gradient(to bottom, var(--ring) 0 10px, transparent 10px 20px);
+    background-color:var(--paper-2);
+    position:relative;
+    border-right:1px dashed var(--line-strong);
+  }
+  .card .ring::before, .card .ring::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    width:8px;height:8px;
+    border-radius:50%;
+    background:var(--ink-navy);
+    opacity:.18;
+    transform:translateX(-50%);
+  }
+  .card .ring::before{ top:14px; }
+  .card .ring::after{ bottom:14px; }
+  .card .body{
+    flex:1;
+    padding:9px 12px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:3px;
+  }
+  .card .qno{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    color:var(--accent-gold);
+    letter-spacing:.03em;
+  }
+  .card .q{
+    font-family:'Space Grotesk','Zen Kaku Gothic New',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    color:var(--ink-navy);
+  }
+  .card .a{
+    font-size:12.5px;
+    color:var(--accent-red);
+    font-weight:700;
+    min-height:1.2em;
+  }
+  .card .a.blank{
+    border-bottom:1px solid var(--line-strong);
+    color:transparent;
+  }
+
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--text-muted);
+    font-size:13.5px;
+    line-height:1.8;
+  }
+  .empty .big{
+    font-family:'Shippori Mincho',serif;
+    font-size:18px;
+    color:var(--ink-navy);
+    display:block;
+    margin-bottom:8px;
+  }
+
+  footer.app-foot{
+    text-align:center;
+    color:#9AA3BE;
+    font-size:11.5px;
+    margin-top:30px;
+  }
+
+  /* ---------- PRINT ---------- */
+  @media print{
+    body{ background:#fff; }
+    header.top, .panel.sticky, .toolbar, footer.app-foot, .no-print{ display:none !important; }
+    .app{ padding:0; max-width:100%; }
+    .layout{ display:block; }
+    .panel{ box-shadow:none; border-radius:0; padding:0; }
+    .panel::before{ display:none; }
+    .cards{ grid-template-columns:repeat(2,1fr); }
+    .card{ break-inside:avoid; border-color:#999; }
+    .meta-line{ border-color:#999; }
+    .answers-page{ page-break-before:always; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="title">単語カード出題メーカー</div>
+    <div class="badge">自分で入力した単語データだけを使用します</div>
+  </header>
+
+  <div class="layout">
+    <!-- ================= LEFT: SETTINGS ================= -->
+    <div class="panel sticky no-print">
+
+      <h2 class="sec"><span class="num">1</span>単語データを登録</h2>
+      <p class="sec-desc">
+        お手元の本を見ながら、<b>番号・英単語・和訳</b>を1行に1語ずつ入力してください（タブまたはカンマ区切り）。
+        著作権の関係で単語データそのものは同梱できないため、この欄への入力が必要です。
+      </p>
+
+      <div class="field">
+        <label for="dataInput">単語データ（例：1,apple,りんご）</label>
+        <textarea id="dataInput" placeholder="1,apple,りんご&#10;2,run,走る&#10;3,happy,幸せな"></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="registerBtn">登録する</button>
+        <button class="btn btn-ghost" id="sampleBtn">サンプルで試す</button>
+      </div>
+      <div class="hint">「サンプルで試す」は動作確認用のダミー単語（学習書とは無関係）が入ります。</div>
+
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-ghost" id="saveBtn">💾 データを保存(json)</button>
+        <button class="btn btn-ghost" id="loadBtn">📂 データを読込</button>
+        <input type="file" id="loadFile" accept="application/json" style="display:none;">
+      </div>
+      <div class="hint">保存しておくと、次回訪問時に読込ボタンから同じ単語データを使えます（ブラウザには保存されません）。</div>
+
+      <div class="status" id="statusBox">
+        <div class="dot"></div>
+        <div>まだ単語が登録されていません</div>
+      </div>
+
+      <h2 class="sec"><span class="num">2</span>出題範囲・形式</h2>
+      <div class="row2 field">
+        <div>
+          <label for="rangeStart">開始番号</label>
+          <input type="number" id="rangeStart" min="1" value="1">
+        </div>
+        <div>
+          <label for="rangeEnd">終了番号</label>
+          <input type="number" id="rangeEnd" min="1" value="50">
+        </div>
+      </div>
+
+      <fieldset class="field">
+        <label>出題モード</label>
+        <div class="choice">
+          <label><input type="radio" name="mode" value="e2j" checked><span>英語→意味</span></label>
+          <label><input type="radio" name="mode" value="j2e"><span>意味→英語</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label class="checkline"><input type="checkbox" id="shuffleChk" checked> 出題順をシャッフルする</label>
+      </div>
+
+      <div class="field">
+        <label for="limitInput">出題数の上限（空欄で範囲内すべて）</label>
+        <input type="number" id="limitInput" min="1" placeholder="例：50">
+      </div>
+
+      <button class="btn btn-red btn-block" id="generateBtn">この条件で問題を作成</button>
+
+      <h2 class="sec" style="margin-top:20px;"><span class="num">3</span>印刷</h2>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="toggleAnsBtn">解答を表示/非表示</button>
+        <button class="btn btn-primary" id="printBtn">🖨 印刷する</button>
+      </div>
+      <div class="hint">印刷時は問題ページの後ろに解答一覧のページが自動で続きます。</div>
+    </div>
+
+    <!-- ================= RIGHT: PREVIEW ================= -->
+    <div class="panel" id="previewPanel">
+      <div class="toolbar no-print">
+        <div>
+          <div class="worksheet-head">出題プレビュー</div>
+          <div class="worksheet-sub">左のパネルで条件を設定し「問題を作成」を押してください</div>
+        </div>
+      </div>
+
+      <div id="worksheetArea">
+        <div class="empty">
+          <span class="big">まだ問題がありません</span>
+          単語データを登録し、範囲とモードを選んで<br>「この条件で問題を作成」を押すとここに出題されます。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-foot">単語データは端末内のみで処理され、外部へ送信されません。</footer>
+</div>
+
+<script>
+let wordBank = []; // {no, en, ja}
+let currentQuiz = [];
+let showAnswers = false;
+
+const $ = (id)=>document.getElementById(id);
+
+function parseData(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const items = [];
+  for(const line of lines){
+    const parts = line.split(/\t|,/).map(s=>s.trim()).filter(s=>s.length>0);
+    if(parts.length < 3) continue;
+    const no = parseInt(parts[0], 10);
+    const en = parts[1];
+    const ja = parts.slice(2).join(' / ');
+    if(!isNaN(no) && en){
+      items.push({no, en, ja});
+    }
+  }
+  return items;
+}
+
+function updateStatus(){
+  const box = $('statusBox');
+  if(wordBank.length === 0){
+    box.classList.remove('ok');
+    box.innerHTML = '<div class="dot"></div><div>まだ単語が登録されていません</div>';
+    return;
+  }
+  const nos = wordBank.map(w=>w.no);
+  const min = Math.min(...nos), max = Math.max(...nos);
+  box.classList.add('ok');
+  box.innerHTML = `<div class="dot"></div><div><b>${wordBank.length}語</b> 登録済み（番号 ${min}〜${max}）</div>`;
+}
+
+$('registerBtn').addEventListener('click', ()=>{
+  const parsed = parseData($('dataInput').value);
+  if(parsed.length === 0){
+    alert('登録できる単語データが見つかりませんでした。\n「番号,英単語,和訳」の形式で入力してください。');
+    return;
+  }
+  wordBank = parsed;
+  updateStatus();
+});
+
+$('sampleBtn').addEventListener('click', ()=>{
+  const sample = [
+    [1,'apple','りんご'],[2,'run','走る'],[3,'happy','幸せな'],[4,'book','本'],
+    [5,'water','水'],[6,'study','勉強する'],[7,'friend','友達'],[8,'school','学校'],
+    [9,'music','音楽'],[10,'travel','旅行する']
+  ].map(([no,en,ja])=>({no,en,ja}));
+  $('dataInput').value = sample.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
+  wordBank = sample;
+  updateStatus();
+});
+
+$('saveBtn').addEventListener('click', ()=>{
+  if(wordBank.length===0){ alert('保存する単語データがありません。'); return; }
+  const blob = new Blob([JSON.stringify(wordBank, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tango_data.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+$('loadBtn').addEventListener('click', ()=> $('loadFile').click());
+$('loadFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(Array.isArray(data)){
+        wordBank = data.filter(w=>w && w.no && w.en);
+        $('dataInput').value = wordBank.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
+        updateStatus();
+      } else {
+        alert('ファイルの形式が正しくありません。');
+      }
+    }catch(err){
+      alert('ファイルを読み込めませんでした: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+$('generateBtn').addEventListener('click', ()=>{
+  if(wordBank.length===0){
+    alert('先に単語データを登録してください。');
+    return;
+  }
+  const start = parseInt($('rangeStart').value,10);
+  const end = parseInt($('rangeEnd').value,10);
+  if(isNaN(start) || isNaN(end) || start > end){
+    alert('開始番号・終了番号を正しく入力してください。');
+    return;
+  }
+  let pool = wordBank.filter(w=> w.no >= start && w.no <= end);
+  if(pool.length===0){
+    alert('指定した範囲に登録済みの単語がありません。');
+    return;
+  }
+  if($('shuffleChk').checked) pool = shuffle(pool);
+  else pool = pool.slice().sort((a,b)=>a.no-b.no);
+
+  const limitVal = parseInt($('limitInput').value,10);
+  if(!isNaN(limitVal) && limitVal > 0 && limitVal < pool.length){
+    pool = pool.slice(0, limitVal);
+  }
+
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  currentQuiz = pool.map((w,i)=>({
+    idx:i+1,
+    no:w.no,
+    q: mode==='e2j' ? w.en : w.ja,
+    a: mode==='e2j' ? w.ja : w.en
+  }));
+  showAnswers = false;
+  renderWorksheet(mode, start, end);
+});
+
+function modeLabel(mode){
+  return mode==='e2j' ? '英語 → 日本語（意味を答える）' : '日本語 → 英語（単語を答える）';
+}
+
+function renderWorksheet(mode, start, end){
+  const area = $('worksheetArea');
+  if(currentQuiz.length===0){
+    area.innerHTML = '<div class="empty"><span class="big">まだ問題がありません</span></div>';
+    return;
+  }
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+
+  const cardsHtml = currentQuiz.map(item=>`
+    <div class="card">
+      <div class="ring"></div>
+      <div class="body">
+        <div class="qno">No.${item.idx} <span style="opacity:.6">(収録${item.no})</span></div>
+        <div class="q">${escapeHtml(item.q)}</div>
+        <div class="a ${showAnswers ? '' : 'blank'}">${escapeHtml(item.a)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  area.innerHTML = `
+    <div class="worksheet-head">単語テスト（収録番号 ${start}〜${end}）</div>
+    <div class="worksheet-sub">${modeLabel(mode)} ／ 全${currentQuiz.length}問</div>
+    <div class="meta-line">
+      <span>出題数：<b>${currentQuiz.length}問</b></span>
+      <span>作成日：<b>${dateStr}</b></span>
+      <span class="name-date">名前<span class="box"></span></span>
+      <span class="name-date">点数<span class="box"></span></span>
+    </div>
+    <div class="cards">${cardsHtml}</div>
+  `;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+$('toggleAnsBtn').addEventListener('click', ()=>{
+  if(currentQuiz.length===0){ alert('先に問題を作成してください。'); return; }
+  showAnswers = !showAnswers;
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  const start = parseInt($('rangeStart').value,10);
+  const end = parseInt($('rangeEnd').value,10);
+  renderWorksheet(mode, start, end);
+});
+
+$('printBtn').addEventListener('click', ()=>{
+  if(currentQuiz.length===0){ alert('先に問題を作成してください。'); return; }
+  // Build a dedicated print view: questions (blank) + answer key page
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  const start = parseInt($('rangeStart').value,10);
+  const end = parseInt($('rangeEnd').value,10);
+  const originalShow = showAnswers;
+
+  showAnswers = false;
+  renderWorksheet(mode, start, end);
+  const questionsHtml = $('worksheetArea').innerHTML;
+
+  showAnswers = true;
+  renderWorksheet(mode, start, end);
+  const answersHtml = $('worksheetArea').innerHTML;
+
+  const area = $('worksheetArea');
+  area.innerHTML = questionsHtml + `<div class="answers-page">
+      <div class="worksheet-head" style="margin-top:20px;">解答一覧（収録番号 ${start}〜${end}）</div>
+      ${answersHtml.substring(answersHtml.indexOf('<div class="cards">'))}
+    </div>`;
+
+  window.print();
+
+  showAnswers = originalShow;
+  renderWorksheet(mode, start, end);
+});
+</script>
+</body>
+</html>
