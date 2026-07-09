@@ -376,30 +376,34 @@
     .layout{ display:block; }
     .panel{ box-shadow:none; border-radius:0; padding:0; }
     .panel::before{ display:none; }
-    .worksheet-head{ font-size:14px; }
-    .worksheet-sub{ font-size:10px; margin-top:1px; }
-    .meta-line{ border-color:#999; margin:6px 0 8px; padding-bottom:6px; }
+    .worksheet-head{ font-size:14px; color:#000; }
+    .worksheet-sub{ font-size:10px; margin-top:1px; color:#000; }
+    .meta-line{ border-color:#000; margin:6px 0 8px; padding-bottom:6px; color:#000; }
+    .meta-line span b{ color:#000; }
+    .name-date{ color:#000; }
+    .name-date .box{ border-bottom-color:#000; }
     .cards{ grid-template-columns:repeat(5,1fr); gap:6px 8px; }
-    .card{ break-inside:avoid; border-color:#999; min-height:48px; }
-    .card .ring{ width:10px; border-right:none; }
-    .card .ring::before, .card .ring::after{ width:4px; height:4px; }
-    .card .ring::before{ top:14px; }
-    .card .ring::after{ bottom:14px; }
+    .card{ break-inside:avoid; border-color:#000; min-height:48px; }
+    .card .ring{ width:10px; border-right:none; background:none; }
+    .card .ring::before, .card .ring::after{ display:none; }
     .card .body{ padding:6px; gap:3px; justify-content:space-between; }
     .card .qline{ gap:3px; }
     .card .qno{
       font-size:8px;
+      color:#000;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
+    .card .qno span{ opacity:1 !important; }
     .card .q, .card .a{
       white-space:normal;
       overflow-wrap:anywhere;
       line-height:1.15;
     }
-    .card .q{ font-size:var(--fit-size, 9px); }
-    .card .a{ font-size:var(--fit-size, 8px); min-height:1.6em; }
+    .card .q{ font-size:var(--fit-size, 9px); color:#000; }
+    .card .a:not(.blank){ font-size:var(--fit-size, 10px); min-height:1.6em; color:#000; }
+    .card .a.blank{ font-size:var(--fit-size, 10px); min-height:1.6em; border-bottom-color:#000; }
     .answers-page{ page-break-before:always; }
   }
 </style>
@@ -726,8 +730,8 @@ function renderWorksheet(mode, start, end){
   const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
 
   const cardsHtml = currentQuiz.map(item=>{
-    const qFit = fitFontSize(item.q, 9, 6, 3);
-    const aFit = fitFontSize(item.a, 8, 5.5, 3);
+    const qFit = fitFontSize(item.q, 9, 7, 3);
+    const aFit = fitFontSize(item.a, 10, 7.5, 3);
     return `
     <div class="card">
       <div class="ring"></div>
