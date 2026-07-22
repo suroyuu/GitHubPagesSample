@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>英単語出題メーカー</title>
+<title>漢字出題メーカー</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -18,7 +18,6 @@
     --accent-red-dark:#A23A30;
     --accent-gold:#B98A2E;
     --text-muted:#6B6558;
-    --ring:#EDE6D3;
     --shadow: 0 10px 30px rgba(31,42,68,0.12);
   }
   *{box-sizing:border-box;}
@@ -50,15 +49,6 @@
     font-weight:700;
     font-size:26px;
     letter-spacing:.04em;
-  }
-  header.top .title small{
-    display:block;
-    font-family:'Zen Kaku Gothic New',sans-serif;
-    font-weight:500;
-    font-size:12.5px;
-    color:#C7CEE0;
-    letter-spacing:.08em;
-    margin-top:4px;
   }
   header.top .badge{
     font-size:11.5px;
@@ -138,7 +128,7 @@
     margin-bottom:6px;
     letter-spacing:.02em;
   }
-  textarea, input[type=text], input[type=number]{
+  textarea, input[type=text], input[type=number], select{
     width:100%;
     border:1px solid var(--line-strong);
     background:#fff;
@@ -154,7 +144,7 @@
     font-family:'Space Grotesk','Zen Kaku Gothic New',monospace;
     line-height:1.55;
   }
-  textarea:focus, input:focus{
+  textarea:focus, input:focus, select:focus{
     outline:2px solid var(--accent-gold);
     outline-offset:1px;
   }
@@ -204,30 +194,6 @@
   .status.ok .dot{ background:#3E7A4E; }
   .status b{ color:var(--ink-navy); }
 
-  fieldset{ border:none; padding:0; margin:0 0 14px; }
-  .choice{
-    display:flex;
-    gap:8px;
-  }
-  .choice label{
-    flex:1;
-    border:1px solid var(--line-strong);
-    border-radius:8px;
-    padding:10px 8px;
-    text-align:center;
-    font-size:12.5px;
-    font-weight:700;
-    cursor:pointer;
-    background:#fff;
-    color:var(--ink-navy-2);
-  }
-  .choice input{ display:none; }
-  .choice input:checked + span{ color:var(--accent-red); }
-  .choice label:has(input:checked){
-    border-color:var(--accent-red);
-    background:#FBEDEA;
-    color:var(--accent-red);
-  }
   .checkline{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--ink-navy-2);}
 
   /* ---- main preview column ---- */
@@ -275,75 +241,65 @@
 
   .cards{
     display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:10px 16px;
+    grid-template-columns:repeat(auto-fill, minmax(84px, 1fr));
+    gap:10px;
   }
   .card{
     display:flex;
-    align-items:stretch;
+    flex-direction:column;
     background:#fff;
     border:1px solid var(--line);
     border-radius:8px;
     overflow:hidden;
-    min-height:56px;
+    min-height:200px;
   }
-  .card .ring{
-    flex:none;
-    width:26px;
-    background:
-      repeating-linear-gradient(to bottom, var(--ring) 0 10px, transparent 10px 20px);
-    background-color:var(--paper-2);
-    position:relative;
-    border-right:1px dashed var(--line-strong);
-  }
-  .card .ring::before, .card .ring::after{
-    content:"";
-    position:absolute;
-    left:50%;
-    width:8px;height:8px;
-    border-radius:50%;
-    background:var(--ink-navy);
-    opacity:.18;
-    transform:translateX(-50%);
-  }
-  .card .ring::before{ top:14px; }
-  .card .ring::after{ bottom:14px; }
-  .card .body{
-    flex:1;
-    padding:9px 12px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    gap:3px;
-  }
-  .card .qline{
-    display:flex;
-    flex-direction:column;
-    gap:3px;
-  }
-  .card .qno{
+  .qno{
     font-family:'Space Grotesk',sans-serif;
     font-size:10.5px;
     font-weight:700;
     color:var(--accent-gold);
     letter-spacing:.03em;
+    padding:5px 6px 0;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
-  .card .q{
-    font-family:'Space Grotesk','Zen Kaku Gothic New',sans-serif;
-    font-size:15px;
+  .khint{
+    display:inline-block;
+    margin-left:4px;
+    padding:0 4px;
+    border:1px solid var(--accent-gold);
+    border-radius:3px;
+    color:var(--accent-gold);
+    font-weight:700;
+    font-size:10px;
+  }
+  /* 縦書きエリア：DOM順で先の要素（問題）が右、後の要素（解答欄）が左に並ぶ */
+  .vwrap{
+    flex:1;
+    writing-mode:vertical-rl;
+    display:flex;
+    flex-direction:column;
+    padding:4px 3px;
+    overflow:hidden;
+  }
+  .q{
+    font-family:'Zen Kaku Gothic New',sans-serif;
+    padding:0 6px;
+    white-space:nowrap;
     font-weight:700;
     color:var(--ink-navy);
+    font-size:15px;
   }
-  .card .a{
-    font-size:12.5px;
-    color:var(--accent-red);
+  .a{
+    padding:0 6px;
+    white-space:nowrap;
     font-weight:700;
-    min-height:1.7em;
+    color:var(--accent-red);
+    font-size:20px;
+    border-right:1px solid var(--line-strong);
   }
-  .card .a.blank{
-    border-bottom:1px solid var(--line-strong);
-    color:transparent;
-  }
+  .a.blank{ color:transparent; }
 
   .empty{
     text-align:center;
@@ -382,28 +338,31 @@
     .meta-line span b{ color:#000; }
     .name-date{ color:#000; }
     .name-date .box{ border-bottom-color:#000; }
-    .cards{ grid-template-columns:repeat(5,1fr); gap:6px 8px; }
-    .card{ break-inside:avoid; border-color:#000; min-height:48px; }
-    .card .ring{ width:10px; border-right:none; background:none; }
-    .card .ring::before, .card .ring::after{ display:none; }
-    .card .body{ padding:6px; gap:3px; justify-content:space-between; }
-    .card .qline{ gap:3px; }
-    .card .qno{
-      font-size:8px;
+    .cards{ grid-template-columns:repeat(10,1fr); gap:4px; }
+    .card{ break-inside:avoid; border-color:#000; min-height:0; height:180px; }
+    .qno{
+      font-size:7px;
       color:#000;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .card .qno span{ opacity:1 !important; }
-    .card .q, .card .a{
+      padding:3px 3px 0;
       white-space:normal;
       overflow-wrap:anywhere;
-      line-height:1.15;
+      overflow:visible;
+      text-overflow:clip;
+      line-height:1.25;
     }
-    .card .q{ font-size:var(--fit-size, 9px); color:#000; }
-    .card .a:not(.blank){ font-size:var(--fit-size, 10px); min-height:1.6em; color:#000; }
-    .card .a.blank{ font-size:var(--fit-size, 10px); min-height:1.6em; border-bottom-color:#000; }
+    .khint{ border-color:#000; color:#000; font-size:7px; padding:0 2px; }
+    .vwrap{ padding:2px 1px; }
+    .q{
+      font-size:var(--fit-size, 13px);
+      color:#000;
+      padding:0 3px;
+    }
+    .a{
+      font-size:var(--fit-size, 18px);
+      color:#000;
+      padding:0 3px;
+      border-right-color:#000;
+    }
     .answers-page{ page-break-before:always; }
   }
 </style>
@@ -412,30 +371,30 @@
 <div class="app">
 
   <header class="top">
-    <div class="title">単語カード出題メーカー</div>
-    <div class="badge">自分で入力した単語データだけを使用します</div>
+    <div class="title">漢字書き取りプリントメーカー</div>
+    <div class="badge">自分で入力した漢字データだけを使用します</div>
   </header>
 
   <div class="layout">
     <!-- ================= LEFT: SETTINGS ================= -->
     <div class="panel sticky no-print">
 
-      <h2 class="sec"><span class="num">1</span>単語データを登録</h2>
+      <h2 class="sec"><span class="num">1</span>漢字データを登録</h2>
       <p class="sec-desc">
-        お手元の本を見ながら、<b>番号・英単語・和訳</b>を1行に1語ずつ入力してください（タブまたはカンマ区切り）。
-        著作権の関係で単語データそのものは同梱できないため、この欄への入力が必要です。
+        お手元の教材を見ながら、<b>番号・学年・対象漢字・問題（ひらがな）・解答（漢字）</b>を1行に1問ずつ入力してください（タブまたはカンマ区切り）。
+        著作権の関係で漢字データそのものは同梱できないため、この欄への入力が必要です。
       </p>
 
       <div class="field">
-        <label for="dataInput">単語データ（例：1,apple,りんご）</label>
-        <textarea id="dataInput" placeholder="1,apple,りんご&#10;2,run,走る&#10;3,happy,幸せな"></textarea>
+        <label for="dataInput">漢字データ（例：1,小1,一,いちねんせい,一年生）</label>
+        <textarea id="dataInput" placeholder="1,小1,一,いちねんせい,一年生&#10;2,小1,二,ふたり,二人&#10;3,小1,三,みっつ,三つ"></textarea>
       </div>
 
       <div class="btn-row">
         <button class="btn btn-primary" id="registerBtn">登録する</button>
         <button class="btn btn-ghost" id="sampleBtn">サンプルで試す</button>
       </div>
-      <div class="hint">「サンプルで試す」は動作確認用のダミー単語（学習書とは無関係）が入ります。</div>
+      <div class="hint">「サンプルで試す」は動作確認用のダミーデータ（学習書とは無関係）が入ります。</div>
 
       <div class="btn-row" style="margin-top:10px;">
         <button class="btn btn-ghost" id="saveBtn">💾 保存(JSON)</button>
@@ -443,14 +402,14 @@
         <button class="btn btn-ghost" id="loadBtn">📂 データを読込</button>
         <input type="file" id="loadFile" accept="application/json,.json,.csv,text/csv" style="display:none;">
       </div>
-      <div class="hint">保存しておくと、次回訪問時に読込ボタンから同じ単語データを使えます（JSON・CSVどちらのファイルも読込可能／ブラウザには保存されません）。</div>
+      <div class="hint">保存しておくと、次回訪問時に読込ボタンから同じデータを使えます（JSON・CSVどちらのファイルも読込可能／ブラウザには保存されません）。</div>
 
       <div class="status" id="statusBox">
         <div class="dot"></div>
-        <div>まだ単語が登録されていません</div>
+        <div>まだ漢字が登録されていません</div>
       </div>
 
-      <h2 class="sec"><span class="num">2</span>出題範囲・形式</h2>
+      <h2 class="sec"><span class="num">2</span>出題範囲・条件</h2>
       <div class="row2 field">
         <div>
           <label for="rangeStart">開始番号</label>
@@ -462,13 +421,16 @@
         </div>
       </div>
 
-      <fieldset class="field">
-        <label>出題モード</label>
-        <div class="choice">
-          <label><input type="radio" name="mode" value="e2j" checked><span>英語→意味</span></label>
-          <label><input type="radio" name="mode" value="j2e"><span>意味→英語</span></label>
-        </div>
-      </fieldset>
+      <div class="field">
+        <label for="gradeFilter">学年で絞り込む</label>
+        <select id="gradeFilter">
+          <option value="">すべて</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="checkline"><input type="checkbox" id="hintChk"> 対象漢字をヒントとして表示する</label>
+      </div>
 
       <div class="field">
         <label class="checkline"><input type="checkbox" id="shuffleChk" checked> 出題順をシャッフルする</label>
@@ -486,7 +448,7 @@
         <button class="btn btn-ghost" id="toggleAnsBtn">解答を表示/非表示</button>
         <button class="btn btn-primary" id="printBtn">🖨 印刷する</button>
       </div>
-      <div class="hint">印刷時は問題ページの後ろに解答一覧のページが自動で続きます。</div>
+      <div class="hint">印刷時は問題ページの後ろに解答一覧のページが自動で続きます（白黒印刷向けに濃い色で出力されます）。</div>
     </div>
 
     <!-- ================= RIGHT: PREVIEW ================= -->
@@ -501,17 +463,17 @@
       <div id="worksheetArea">
         <div class="empty">
           <span class="big">まだ問題がありません</span>
-          単語データを登録し、範囲とモードを選んで<br>「この条件で問題を作成」を押すとここに出題されます。
+          漢字データを登録し、範囲と条件を選んで<br>「この条件で問題を作成」を押すとここに出題されます。
         </div>
       </div>
     </div>
   </div>
 
-  <footer class="app-foot">単語データは端末内のみで処理され、外部へ送信されません。</footer>
+  <footer class="app-foot">漢字データは端末内のみで処理され、外部へ送信されません。</footer>
 </div>
 
 <script>
-let wordBank = []; // {no, en, ja}
+let kanjiBank = []; // {no, grade, kanji, q, a}
 let currentQuiz = [];
 let showAnswers = false;
 
@@ -522,58 +484,78 @@ function parseData(text){
   const items = [];
   for(const line of lines){
     const parts = line.split(/\t|,/).map(s=>s.trim()).filter(s=>s.length>0);
-    if(parts.length < 3) continue;
+    if(parts.length < 5) continue;
     const no = parseInt(parts[0], 10);
-    const en = parts[1];
-    const ja = parts.slice(2).join(' / ');
-    if(!isNaN(no) && en){
-      items.push({no, en, ja});
+    const grade = parts[1];
+    const kanji = parts[2];
+    const q = parts[3];
+    const a = parts.slice(4).join(' / ');
+    if(!isNaN(no) && grade && kanji && q && a){
+      items.push({no, grade, kanji, q, a});
     }
   }
   return items;
 }
 
+function populateGradeOptions(){
+  const sel = $('gradeFilter');
+  const current = sel.value;
+  const grades = [...new Set(kanjiBank.map(w=>w.grade))];
+  sel.innerHTML = '<option value="">すべて</option>' + grades.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+  if(grades.includes(current)) sel.value = current;
+}
+
 function updateStatus(){
   const box = $('statusBox');
-  if(wordBank.length === 0){
+  if(kanjiBank.length === 0){
     box.classList.remove('ok');
-    box.innerHTML = '<div class="dot"></div><div>まだ単語が登録されていません</div>';
+    box.innerHTML = '<div class="dot"></div><div>まだ漢字が登録されていません</div>';
     return;
   }
-  const nos = wordBank.map(w=>w.no);
+  const nos = kanjiBank.map(w=>w.no);
   const min = Math.min(...nos), max = Math.max(...nos);
+  const grades = [...new Set(kanjiBank.map(w=>w.grade))];
   box.classList.add('ok');
-  box.innerHTML = `<div class="dot"></div><div><b>${wordBank.length}語</b> 登録済み（番号 ${min}〜${max}）</div>`;
+  box.innerHTML = `<div class="dot"></div><div><b>${kanjiBank.length}問</b> 登録済み（番号 ${min}〜${max} / ${escapeHtml(grades.join('・'))}）</div>`;
 }
 
 $('registerBtn').addEventListener('click', ()=>{
   const parsed = parseData($('dataInput').value);
   if(parsed.length === 0){
-    alert('登録できる単語データが見つかりませんでした。\n「番号,英単語,和訳」の形式で入力してください。');
+    alert('登録できる漢字データが見つかりませんでした。\n「番号,学年,対象漢字,問題（ひらがな）,解答（漢字）」の形式で入力してください。');
     return;
   }
-  wordBank = parsed;
+  kanjiBank = parsed;
   updateStatus();
+  populateGradeOptions();
 });
 
 $('sampleBtn').addEventListener('click', ()=>{
   const sample = [
-    [1,'apple','りんご'],[2,'run','走る'],[3,'happy','幸せな'],[4,'book','本'],
-    [5,'water','水'],[6,'study','勉強する'],[7,'friend','友達'],[8,'school','学校'],
-    [9,'music','音楽'],[10,'travel','旅行する']
-  ].map(([no,en,ja])=>({no,en,ja}));
-  $('dataInput').value = sample.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
-  wordBank = sample;
+    [1,'小1','一','いち','一つ'],
+    [2,'小1','二','に','二人'],
+    [3,'小1','三','さん','三日'],
+    [4,'小1','人','ひと','人力'],
+    [5,'小1','日','ひ','日光'],
+    [6,'小1','月','つき','月見'],
+    [7,'小1','木','き','木立'],
+    [8,'小1','山','やま','山道'],
+    [9,'小1','川','かわ','小川'],
+    [10,'小1','田','た','田んぼ']
+  ].map(([no,grade,kanji,q,a])=>({no,grade,kanji,q,a}));
+  $('dataInput').value = sample.map(w=>`${w.no},${w.grade},${w.kanji},${w.q},${w.a}`).join('\n');
+  kanjiBank = sample;
   updateStatus();
+  populateGradeOptions();
 });
 
 $('saveBtn').addEventListener('click', ()=>{
-  if(wordBank.length===0){ alert('保存する単語データがありません。'); return; }
-  const blob = new Blob([JSON.stringify(wordBank, null, 2)], {type:'application/json'});
+  if(kanjiBank.length===0){ alert('保存するデータがありません。'); return; }
+  const blob = new Blob([JSON.stringify(kanjiBank, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'tango_data.json';
+  a.download = 'kanji_data.json';
   a.click();
   URL.revokeObjectURL(url);
 });
@@ -583,18 +565,20 @@ function toCsvField(s){
   return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
 }
 
-function wordBankToCsv(bank){
-  return bank.map(w=>[w.no, toCsvField(w.en), toCsvField(w.ja)].join(',')).join('\r\n');
+function bankToCsv(bank){
+  const header = '番号,学年,対象漢字,問題（ひらがな）,解答（漢字）';
+  const rows = bank.map(w=>[w.no, toCsvField(w.grade), toCsvField(w.kanji), toCsvField(w.q), toCsvField(w.a)].join(','));
+  return [header, ...rows].join('\r\n');
 }
 
 $('saveCsvBtn').addEventListener('click', ()=>{
-  if(wordBank.length===0){ alert('保存する単語データがありません。'); return; }
-  const csv = wordBankToCsv(wordBank);
+  if(kanjiBank.length===0){ alert('保存するデータがありません。'); return; }
+  const csv = bankToCsv(kanjiBank);
   const blob = new Blob(['﻿' + csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'tango_data.csv';
+  a.download = 'kanji_data.csv';
   a.click();
   URL.revokeObjectURL(url);
 });
@@ -627,12 +611,14 @@ function parseCsvText(text){
   const items = [];
   for(const line of lines){
     const parts = parseCsvLine(line);
-    if(parts.length < 3) continue;
+    if(parts.length < 5) continue;
     const no = parseInt(parts[0], 10);
-    const en = parts[1];
-    const ja = parts.slice(2).join(' / ');
-    if(!isNaN(no) && en){
-      items.push({no, en, ja});
+    const grade = parts[1];
+    const kanji = parts[2];
+    const q = parts[3];
+    const a = parts.slice(4).join(' / ');
+    if(!isNaN(no) && grade && kanji && q && a){
+      items.push({no, grade, kanji, q, a});
     }
   }
   return items;
@@ -650,7 +636,7 @@ $('loadFile').addEventListener('change', (e)=>{
       if(isCsv){
         data = parseCsvText(ev.target.result);
         if(data.length === 0){
-          alert('CSVファイルから単語データを読み取れませんでした。\n「番号,英単語,和訳」の形式で入力してください。');
+          alert('CSVファイルからデータを読み取れませんでした。\n「番号,学年,対象漢字,問題（ひらがな）,解答（漢字）」の形式で入力してください。');
           return;
         }
       } else {
@@ -659,11 +645,12 @@ $('loadFile').addEventListener('change', (e)=>{
           alert('ファイルの形式が正しくありません。');
           return;
         }
-        data = parsed.filter(w=>w && w.no && w.en);
+        data = parsed.filter(w=>w && w.no && w.grade && w.kanji && w.q && w.a);
       }
-      wordBank = data;
-      $('dataInput').value = wordBank.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
+      kanjiBank = data;
+      $('dataInput').value = kanjiBank.map(w=>`${w.no},${w.grade},${w.kanji},${w.q},${w.a}`).join('\n');
       updateStatus();
+      populateGradeOptions();
     }catch(err){
       alert('ファイルを読み込めませんでした: ' + err.message);
     }
@@ -682,8 +669,8 @@ function shuffle(arr){
 }
 
 $('generateBtn').addEventListener('click', ()=>{
-  if(wordBank.length===0){
-    alert('先に単語データを登録してください。');
+  if(kanjiBank.length===0){
+    alert('先に漢字データを登録してください。');
     return;
   }
   const start = parseInt($('rangeStart').value,10);
@@ -692,9 +679,10 @@ $('generateBtn').addEventListener('click', ()=>{
     alert('開始番号・終了番号を正しく入力してください。');
     return;
   }
-  let pool = wordBank.filter(w=> w.no >= start && w.no <= end);
+  const gradeVal = $('gradeFilter').value;
+  let pool = kanjiBank.filter(w=> w.no >= start && w.no <= end && (gradeVal === '' || w.grade === gradeVal));
   if(pool.length===0){
-    alert('指定した範囲に登録済みの単語がありません。');
+    alert('指定した条件に登録済みの漢字がありません。');
     return;
   }
   if($('shuffleChk').checked) pool = shuffle(pool);
@@ -705,22 +693,14 @@ $('generateBtn').addEventListener('click', ()=>{
     pool = pool.slice(0, limitVal);
   }
 
-  const mode = document.querySelector('input[name=mode]:checked').value;
   currentQuiz = pool.map((w,i)=>({
-    idx:i+1,
-    no:w.no,
-    q: mode==='e2j' ? w.en : w.ja,
-    a: mode==='e2j' ? w.ja : w.en
+    idx:i+1, no:w.no, grade:w.grade, kanji:w.kanji, q:w.q, a:w.a
   }));
   showAnswers = false;
-  renderWorksheet(mode, start, end);
+  renderWorksheet(start, end);
 });
 
-function modeLabel(mode){
-  return mode==='e2j' ? '英語 → 日本語（意味を答える）' : '日本語 → 英語（単語を答える）';
-}
-
-function renderWorksheet(mode, start, end){
+function renderWorksheet(start, end){
   const area = $('worksheetArea');
   if(currentQuiz.length===0){
     area.innerHTML = '<div class="empty"><span class="big">まだ問題がありません</span></div>';
@@ -728,18 +708,17 @@ function renderWorksheet(mode, start, end){
   }
   const today = new Date();
   const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  const showHint = $('hintChk').checked;
 
   const cardsHtml = currentQuiz.map(item=>{
-    const qFit = fitFontSize(item.q, 9, 7, 3);
-    const aFit = fitFontSize(item.a, 10, 7.5, 3);
+    const qFit = fitFontSize(item.q, 13, 6);
+    const aFit = fitFontSize(item.a, 18, 8);
+    const hintHtml = showHint ? `<span class="khint">${escapeHtml(item.kanji)}</span>` : '';
     return `
     <div class="card">
-      <div class="ring"></div>
-      <div class="body">
-        <div class="qline">
-          <div class="qno">No.${item.idx} <span style="opacity:.6">(収録${item.no})</span></div>
-          <div class="q" style="--fit-size:${qFit}px">${formatCardText(item.q)}</div>
-        </div>
+      <div class="qno">No.${item.idx} <span style="opacity:.6">(${escapeHtml(item.grade)}・収録${item.no})</span>${hintHtml}</div>
+      <div class="vwrap">
+        <div class="q" style="--fit-size:${qFit}px">${formatCardText(item.q)}</div>
         <div class="a ${showAnswers ? '' : 'blank'}" style="--fit-size:${aFit}px">${formatCardText(item.a)}</div>
       </div>
     </div>
@@ -747,8 +726,8 @@ function renderWorksheet(mode, start, end){
   }).join('');
 
   area.innerHTML = `
-    <div class="worksheet-head">単語テスト（収録番号 ${start}〜${end}）</div>
-    <div class="worksheet-sub">${modeLabel(mode)} ／ 全${currentQuiz.length}問</div>
+    <div class="worksheet-head">漢字書き取りプリント（収録番号 ${start}〜${end}）</div>
+    <div class="worksheet-sub">読みを見て正しい漢字を書きましょう ／ 全${currentQuiz.length}問</div>
     <div class="meta-line">
       <span>出題数：<b>${currentQuiz.length}問</b></span>
       <span>作成日：<b>${dateStr}</b></span>
@@ -763,58 +742,38 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// 全角文字を1、半角文字を0.55として文字列の見た目の幅を概算する
-function visualWidth(s){
-  let w = 0;
-  for(const ch of String(s)){
-    w += /[　-ヿ㐀-䶿一-鿿＀-￯]/.test(ch) ? 1 : 0.55;
-  }
-  return w || 1;
-}
-
-// ①②③...の丸数字の直前で区切り、区切られた語義ごとに改行して表示するための分割
-function splitByCircledNumbers(s){
-  return String(s).split(/(?=[①-⑳])/).filter(p=>p.length>0);
-}
-
 function formatCardText(s){
-  return splitByCircledNumbers(s).map(escapeHtml).join('<br>');
+  return escapeHtml(s);
 }
 
-// 印刷時のカード内テキスト幅（px目安）に収まるようフォントサイズを逆算する。
-// 丸数字で改行される場合は、一番長い語義（1行分）が収まる大きさを基準にする。
-const PRINT_CARD_TEXT_PX = 112;
-function fitFontSize(text, basePx, minPx, maxLines){
-  const segments = splitByCircledNumbers(text);
-  const size = segments.length > 1
-    ? PRINT_CARD_TEXT_PX / Math.max(...segments.map(visualWidth))
-    : (PRINT_CARD_TEXT_PX * maxLines) / visualWidth(text);
+// 縦書きカードの高さ（px目安）に収まるよう、文字数からフォントサイズを逆算する。
+const PRINT_TEXT_BUDGET_PX = 135;
+function fitFontSize(text, basePx, minPx){
+  const count = Array.from(String(text)).length || 1;
+  const size = PRINT_TEXT_BUDGET_PX / (count * 1.15);
   return Math.round(Math.min(basePx, Math.max(minPx, size)) * 10) / 10;
 }
 
 $('toggleAnsBtn').addEventListener('click', ()=>{
   if(currentQuiz.length===0){ alert('先に問題を作成してください。'); return; }
   showAnswers = !showAnswers;
-  const mode = document.querySelector('input[name=mode]:checked').value;
   const start = parseInt($('rangeStart').value,10);
   const end = parseInt($('rangeEnd').value,10);
-  renderWorksheet(mode, start, end);
+  renderWorksheet(start, end);
 });
 
 $('printBtn').addEventListener('click', ()=>{
   if(currentQuiz.length===0){ alert('先に問題を作成してください。'); return; }
-  // Build a dedicated print view: questions (blank) + answer key page
-  const mode = document.querySelector('input[name=mode]:checked').value;
   const start = parseInt($('rangeStart').value,10);
   const end = parseInt($('rangeEnd').value,10);
   const originalShow = showAnswers;
 
   showAnswers = originalShow;
-  renderWorksheet(mode, start, end);
+  renderWorksheet(start, end);
   const questionsHtml = $('worksheetArea').innerHTML;
 
   showAnswers = true;
-  renderWorksheet(mode, start, end);
+  renderWorksheet(start, end);
   const answersHtml = $('worksheetArea').innerHTML;
 
   const area = $('worksheetArea');
@@ -826,7 +785,7 @@ $('printBtn').addEventListener('click', ()=>{
   window.print();
 
   showAnswers = originalShow;
-  renderWorksheet(mode, start, end);
+  renderWorksheet(start, end);
 });
 </script>
 </body>
