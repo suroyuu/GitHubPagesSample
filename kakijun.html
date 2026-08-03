@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>漢字 書き順れんしゅうプリント</title>
+<style>
+:root{
+  --ink:#1a1a1a; --rule:#8a94a0; --guide:#a8cfe8; --trace:#c9cdd2;
+  --shu:#c0392b; --panel:#eef1f4; --line:#c9d1d9;
+  --model:30mm; --prac:20mm;
+  --font-ui:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
+  --font-kyokasho:"UD デジタル教科書体 N-R","UDデジタル教科書体 N-R","UD Digi Kyokasho N-R","游教科書体","YuKyokasho","HGP教科書体","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-so:"KanjiStrokeOrders","Kanji Stroke Orders",var(--font-kyokasho);
+  --font-trace:var(--font-so);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#dfe4e9;color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.7}
+
+.panel{background:var(--panel);border-bottom:2px solid var(--shu);padding:16px 20px;position:sticky;top:0;z-index:10}
+.panel h1{margin:0 0 10px;font-size:17px;letter-spacing:.04em}
+.status{font-size:12.5px;padding:7px 11px;border-radius:2px;margin-bottom:12px;border:1px solid}
+.status.ok{background:#eaf6ee;border-color:#8fc7a3;color:#1e5e34}
+.status.ng{background:#fdeeec;border-color:#e0a49c;color:#8e2a1e}
+.grades{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.grades button{font-family:inherit;font-size:13px;padding:6px 14px;border:1px solid var(--line);background:#fff;border-radius:2px;cursor:pointer}
+.grades button[aria-pressed="true"]{background:var(--shu);border-color:var(--shu);color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--shu);outline-offset:2px}
+.opts{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end}
+.opt{display:flex;flex-direction:column;gap:3px}
+.opt label{font-size:11px;color:#5a6570;letter-spacing:.05em}
+.opt input,.opt select{font-family:inherit;font-size:14px;padding:5px 7px;border:1px solid var(--line);background:#fff;border-radius:2px}
+.opt input[type=number]{width:74px}
+.check{flex-direction:row;align-items:center;gap:6px}
+.check label{font-size:13px;color:var(--ink)}
+.check.hero label{font-weight:600;color:var(--shu)}
+.print{font-family:inherit;font-size:14px;padding:9px 22px;background:var(--shu);color:#fff;border:none;border-radius:2px;cursor:pointer}
+.list-wrap{margin-top:12px}
+.list-wrap label{font-size:11px;color:#5a6570;display:block;margin-bottom:3px}
+textarea{width:100%;min-height:56px;font-family:var(--font-kyokasho);font-size:17px;line-height:1.9;padding:8px;border:1px solid var(--line);border-radius:2px;resize:vertical}
+textarea:disabled{background:#f4f6f8;color:#8a94a0}
+.meter{font-size:12px;color:#5a6570;margin-top:5px}
+.meter .warn{color:var(--shu);font-weight:600}
+.note{font-size:12px;color:#5a6570;margin-top:5px}
+.note strong{color:var(--shu)}
+
+.sheets{padding:24px 12px 60px}
+.sheet{background:#fff;width:210mm;margin:0 auto 20px;padding:12mm;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid var(--ink);padding-bottom:5px;margin-bottom:5mm}
+.sheet-head h2{margin:0;font-size:15px;letter-spacing:.08em}
+.sheet-head .fields{font-size:12px}
+.sheet-head .fields span{margin-left:14px}
+.sheet-head .fields u{display:inline-block;min-width:24mm;border-bottom:1px solid #999;text-decoration:none}
+
+.cols{display:flex;gap:8mm;align-items:flex-start}
+.col{flex:1 1 0;min-width:0}
+.legend{display:flex;font-size:9px;color:#7a838c;letter-spacing:.1em;margin-bottom:1.5mm;padding-left:6mm}
+.legend i{font-style:normal;text-align:center;flex:none}
+.legend .l1{width:var(--model)}
+.legend .l2{width:var(--prac);margin-left:3mm}
+.legend .l3{width:var(--prac)}
+
+.row{display:flex;align-items:center;break-inside:avoid;page-break-inside:avoid}
+.no{width:6mm;flex:none;font-size:9px;color:#7a838c;text-align:right;padding-right:1.5mm}
+.pair{display:flex;margin-left:3mm}
+.pair .cell+.cell{margin-left:-.6pt}
+.cell{flex:none;border:.6pt solid var(--rule);position:relative;display:flex;align-items:center;justify-content:center;line-height:1;overflow:hidden}
+.cell.p{width:var(--prac);height:var(--prac);font-size:calc(var(--prac)*.8);font-family:var(--font-trace)}
+.cell.model{width:var(--model);height:var(--model);font-size:calc(var(--model)*.86);border:1.2pt solid var(--ink);font-family:var(--font-so)}
+.cell.trace{color:var(--trace)}
+.guide::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:.5pt dashed var(--guide)}
+.guide::after{content:"";position:absolute;top:0;bottom:0;left:50%;border-left:.5pt dashed var(--guide)}
+.cell span{position:relative;z-index:1}
+
+.rules{font-size:12.5px;line-height:1.85}
+.rules ol{margin:0;padding-left:1.5em}
+.rules li{margin-bottom:4px}
+.rules .ex{font-family:var(--font-kyokasho);font-size:19px;letter-spacing:.28em;margin-left:.4em;vertical-align:-.15em}
+.rules h3{font-size:13px;margin:6mm 0 3mm;padding-left:7px;border-left:3px solid var(--shu);letter-spacing:.06em}
+.rules table{border-collapse:collapse;width:100%;font-size:12.5px}
+.rules th,.rules td{border:.6pt solid var(--rule);padding:4px 8px;vertical-align:middle}
+.rules th{background:#f2f5f7;width:14mm;font-family:var(--font-so);font-size:26px;text-align:center;font-weight:400}
+.rules td{text-align:left}
+.rules .warn{color:var(--shu)}
+
+@media print{
+  body{background:#fff}
+  .panel{display:none}
+  .sheets{padding:0}
+  .sheet{width:auto;margin:0;padding:0;box-shadow:none;page-break-after:always}
+  .sheet:last-child{page-break-after:auto}
+  @page{size:A4 portrait;margin:12mm}
+}
+@media (max-width:860px){ .sheet{width:auto} }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h1>漢字 書き順れんしゅうプリント</h1>
+  <div class="status" id="status"></div>
+
+  <div class="grades" id="grades" role="group" aria-label="学年をえらぶ"></div>
+
+  <div class="opts">
+    <div class="opt check hero"><input type="checkbox" id="tricky" checked><label for="tricky">間違えやすい漢字のみ</label></div>
+    <div class="opt"><label for="from">何字目から</label><input type="number" id="from" min="1" value="1"></div>
+    <div class="opt"><label for="to">何字目まで</label><input type="number" id="to" min="1" value="30"></div>
+    <div class="opt"><label for="msize">お手本マス(mm)</label><input type="number" id="msize" min="16" max="50" value="30"></div>
+    <div class="opt"><label for="psize">練習マス(mm)</label><input type="number" id="psize" min="10" max="30" value="20"></div>
+    <div class="opt"><label for="gap">行間(mm)</label><input type="number" id="gap" min="0" max="8" step="0.5" value="2.4"></div>
+    <div class="opt"><label for="tracefont">なぞりマスの字体</label>
+      <select id="tracefont">
+        <option value="so" selected>書き順番号つき</option>
+        <option value="kyokasho">教科書体（番号なし）</option>
+      </select></div>
+    <div class="opt check"><input type="checkbox" id="guide" checked><label for="guide">十字リーダー</label></div>
+    <div class="opt check"><input type="checkbox" id="legend" checked><label for="legend">見出し</label></div>
+    <div class="opt check"><input type="checkbox" id="showrules"><label for="showrules">ルールのページ</label></div>
+    <button class="print" id="printBtn">印刷する</button>
+  </div>
+
+  <div class="list-wrap">
+    <label for="kanji" id="kanjiLabel">この学年の漢字（自由に書きかえられます。空白・改行はむし）</label>
+    <textarea id="kanji"></textarea>
+    <div class="meter" id="meter"></div>
+    <p class="note" id="gradenote"></p>
+  </div>
+</div>
+
+<div class="sheets" id="sheets"></div>
+
+<script>
+const G1="一右雨円王音下火花貝学気九休玉金空月犬見五口校左三山子四糸字耳七車手十出女小上森人水正生青夕石赤千川先早草足村大男竹中虫町天田土二日入年白八百文木本名目立力林六";
+const G2="引羽雲園遠何科夏家歌画回会海絵外角楽活間丸岩顔汽記帰弓牛魚京強教近兄形計元言原戸古午後語工公広交光考行高黄合谷国黒今才細作算止市矢姉思紙寺自時室社弱首秋週春書少場色食心新親図数西声星晴切雪船線前組走多太体台地池知茶昼長鳥朝直通弟店点電刀冬当東答頭同道読内南肉馬売買麦半番父風分聞米歩母方北毎妹万明鳴毛門夜野友用曜来里理話";
+const G3="悪安暗医委意育員院飲運泳駅央横屋温化荷界開階寒感漢館岸起期客究急級宮球去橋業曲局銀区苦具君係軽血決研県庫湖向幸港号根祭皿仕死使始指歯詩次事持式実写者主守取酒受州拾終習集住重宿所暑助昭消商章勝乗植申身神真深進世整昔全相送想息速族他打対待代第題炭短談着注柱丁帳調追定庭笛鉄転都度投豆島湯登等動童農波配倍箱畑発反坂板皮悲美鼻筆氷表秒病品負部服福物平返勉放味命面問役薬由油有遊予羊洋葉陽様落流旅両緑礼列練路和";
+const G4="愛案以衣位茨印英栄媛塩岡億加果貨課芽賀改械害街各覚潟完官管関観願岐希季旗器機議求泣給挙漁共協鏡競極熊訓軍郡群径景芸欠結建健験固功好香候康佐差菜最埼材崎昨札刷察参産散残氏司試児治滋辞鹿失借種周祝順初松笑唱焼照城縄臣信井成省清静席積折節説浅戦選然争倉巣束側続卒孫帯隊達単置仲沖兆低底的典伝徒努灯働特徳栃奈梨熱念敗梅博阪飯飛必票標不夫付府阜富副兵別辺変便包法望牧末満未民無約勇要養浴利陸良料量輪類令冷例連老労録";
+const G5="圧囲移因永営衛易益液演応往桜可仮価河過快解格確額刊幹慣眼紀基寄規喜技義逆久旧救居許境均禁句型経潔件険検限現減故個護効厚耕航鉱構興講告混査再災妻採際在財罪殺雑酸賛士支史志枝師資飼示似識質舎謝授修述術準序招証象賞条状常情織職制性政勢精製税責績接設絶祖素総造像増則測属率損貸態団断築貯張停提程適統堂銅導得毒独任燃能破犯判版比肥非費備評貧布婦武復複仏粉編弁保墓報豊防貿暴脈務夢迷綿輸余容略留領歴";
+const G6="胃異遺域宇映延沿恩我灰拡革閣割株干巻看簡危机揮貴疑吸供胸郷勤筋系敬警劇激穴券絹権憲源厳己呼誤后孝皇紅降鋼刻穀骨困砂座済裁策冊蚕至私姿視詞誌磁射捨尺若樹収宗就衆従縦縮熟純処署諸除承将傷障蒸針仁垂推寸盛聖誠舌宣専泉洗染銭善奏窓創装層操蔵臓存尊退宅担探誕段暖値宙忠著庁頂腸潮賃痛敵展討党糖届難乳認納脳派拝背肺俳班晩否批秘俵腹奮並陛閉片補暮宝訪亡忘棒枚幕密盟模訳郵優預幼欲翌乱卵覧裏律臨朗論";
+const NOTE456="4〜6年は<strong>2020年度の改訂</strong>で配当が入れかわっています（都道府県の漢字20字が4年に追加され、その分が上の学年へ移動）。まちがった学年で印刷しないよう、あえて空にしてあります。お手持ちのリストを上のらんに貼り付けてください。";
+
+/* 書き順を間違えやすい字（1〜3年） */
+const TRICKY="右左上出田王玉円車力九女水火気耳年生中石男花白空学先"
+           +"母馬鳥弟兄何番楽帰区長直用万方麦半米風角切図"
+           +"世由発医表農重味歯短列氷返送起等悲筆族"
+           +"必成飛無挙兆底席建康選然静街極望包養阜潟成"
+           +"興逆率断属修織職過迷復象非能綿武比再率"
+           +"域我収承垂専奏難郵卵密派糖蒸厳臨割座衆展";
+
+const GRADES={1:{list:G1,note:""},2:{list:G2,note:""},3:{list:G3,note:""},
+  4:{list:G4,note:"2020年度改訂後の配当です（都道府県の漢字を含む202字）。教科書会社によって習う順序は異なります。"},
+  5:{list:G5,note:"2020年度改訂後の配当です（193字）。教科書会社によって習う順序は異なります。"},
+  6:{list:G6,note:"2020年度改訂後の配当です（191字）。これで小学校の1026字がそろいました。"},
+  0:{list:"",note:"にがてな字だけを集めた復習プリントにどうぞ。"}};
+
+const store={}; Object.keys(GRADES).forEach(k=>store[k]=GRADES[k].list);
+let grade=1;
+const $=id=>document.getElementById(id);
+const chars=s=>[...(s||"")].filter(c=>!/\s|、|,/.test(c));
+const TSET=new Set([...TRICKY]);
+
+function checkFont(){
+  let found=false;
+  try{ found=document.fonts.check('80px "KanjiStrokeOrders"'); }catch(e){}
+  const el=$("status");
+  if(found){
+    el.className="status ok";
+    el.innerHTML='書き順フォント <b>KanjiStrokeOrders</b> を検出しました。お手本・なぞりマスに画数の番号が入ります。';
+  }else{
+    el.className="status ng";
+    el.innerHTML='書き順フォント <b>KanjiStrokeOrders</b> が見つかりません（検出は完全ではないので、番号が出ていれば無視してください）。'
+      +'<br>入手先: <a href="https://www.nihilist.org.uk/" target="_blank" rel="noopener">nihilist.org.uk</a> → インストール後に<b>ブラウザを再起動</b>してください。';
+  }
+}
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(checkFont); else checkFont();
+
+const gradesEl=$("grades");
+[1,2,3,4,5,6,0].forEach(g=>{
+  const b=document.createElement("button");
+  b.textContent=g===0?"自分でえらぶ":g+"年";
+  b.setAttribute("aria-pressed",String(g===1));
+  b.onclick=()=>{
+    store[grade]=$("kanji").value; grade=g;
+    [...gradesEl.children].forEach((c,i)=>c.setAttribute("aria-pressed",String([1,2,3,4,5,6,0][i]===g)));
+    $("kanji").value=store[g];
+    $("gradenote").innerHTML=GRADES[g].note;
+    resetRange(); render();
+  };
+  gradesEl.appendChild(b);
+});
+
+/* 表示対象の文字列（間違えやすいモードのフィルタ込み） */
+function targetChars(){
+  const all=chars($("kanji").value);
+  return $("tricky").checked ? all.filter(c=>TSET.has(c)) : all;
+}
+function resetRange(){
+  $("from").value=1;
+  $("to").value=targetChars().length||1;
+}
+
+function render(){
+  const all=targetChars();
+  const from=Math.max(1,+$("from").value||1);
+  const to=Math.min(all.length,+$("to").value||all.length);
+  const M=Math.min(50,Math.max(16,+$("msize").value||30));
+  const P=Math.min(30,Math.max(10,+$("psize").value||20));
+  const GAP=Math.min(8,Math.max(0,+$("gap").value||0));
+  const guide=$("guide").checked?" guide":"";
+  const showLegend=$("legend").checked;
+  const onlyTricky=$("tricky").checked;
+
+  document.documentElement.style.setProperty("--model",M+"mm");
+  document.documentElement.style.setProperty("--prac",P+"mm");
+  document.documentElement.style.setProperty("--font-trace",
+    $("tracefont").value==="so"?"var(--font-so)":"var(--font-kyokasho)");
+
+  const colW=6+M+3+P*2, width=colW*2+8;
+  const pt=Math.round(M*0.86*72/25.4);
+  const rowH=Math.max(M,P)+GAP;
+  const perCol=Math.max(1,Math.floor((258-(showLegend?5:0))/rowH));
+  const perPage=perCol*2;
+
+  const total=chars($("kanji").value).length;
+  let msg = onlyTricky
+    ? `間違えやすい字 ${all.length}字（この学年の${total}字から選択）`
+    : `全${all.length}字`;
+  msg+=` ／ ${all.length?from:0}〜${to}字目 ／ お手本 約${pt}pt ／ 1ページ${perPage}字`;
+  const pages=Math.ceil(Math.max(0,to-from+1)/perPage);
+  if(pages) msg+=` ／ ${pages}ページ`;
+  const OFFICIAL={1:80,2:160,3:200,4:202,5:193,6:191};
+  if(OFFICIAL[grade] && total && total!==OFFICIAL[grade])
+    msg+=` <span class="warn">— 配当表は${OFFICIAL[grade]}字のはずが${total}字です。リストを確認してください。</span>`;
+  if(onlyTricky && !all.length && total) msg+=` <span class="warn">— この学年には登録がありません。チェックを外してください。</span>`;
+  if(pt<70) msg+=` <span class="warn">— 書き順番号がつぶれます。お手本を${Math.ceil(70*25.4/72/0.86)}mm以上に。</span>`;
+  if(width>186) msg+=` <span class="warn">— 横はば約${Math.round(width)}mmでA4に入りません。</span>`;
+  $("meter").innerHTML=msg;
+
+  const rowHTML=(k,i)=>`<div class="row" style="margin-bottom:${GAP}mm">
+      <div class="no">${i+1}</div>
+      <div class="cell model${guide}"><span>${k}</span></div>
+      <div class="pair">
+        <div class="cell p trace${guide}"><span>${k}</span></div>
+        <div class="cell p${guide}"></div>
+      </div></div>`;
+  const legendHTML=showLegend
+    ? `<div class="legend"><i class="l1">おてほん</i><i class="l2">なぞる</i><i class="l3">かく</i></div>`:"";
+
+  const items=[];
+  for(let i=from-1;i<to;i++){ if(all[i]) items.push(rowHTML(all[i],i)); }
+
+  const base=grade===0?"漢字の書き順れんしゅう":`${grade}年の漢字　書き順れんしゅう`;
+  const title=onlyTricky?base.replace("　"," ")+"（間違えやすい字）":base;
+  let html=$("showrules").checked?rulesPage():"";
+  for(let p=0;p<items.length;p+=perPage){
+    const page=items.slice(p,p+perPage), nL=Math.ceil(page.length/2);
+    html+=`<div class="sheet"><div class="sheet-head"><h2>${title}</h2>
+      <div class="fields"><span>なまえ <u></u></span><span>日づけ <u></u></span></div></div>
+      <div class="cols">
+        <div class="col">${legendHTML}${page.slice(0,nL).join("")}</div>
+        <div class="col">${page.length>nL?legendHTML+page.slice(nL).join(""):""}</div>
+      </div></div>`;
+  }
+  if(!items.length && !$("showrules").checked)
+    html=`<div class="sheet"><p style="color:#7a838c">漢字を入力すると、ここにプリントが出ます。</p></div>`;
+  $("sheets").innerHTML=html;
+}
+
+function rulesPage(){
+  return `<div class="sheet"><div class="sheet-head"><h2>書き順の きほんルール</h2>
+  <div class="fields"><span>なまえ <u></u></span></div></div>
+  <div class="rules">
+  <p>書き順は丸暗記するものではありません。下の原則をおぼえると、はじめて見る漢字でもだいたい正しく書けます。</p>
+  <ol>
+    <li><b>上から下へ</b><span class="ex">三 言 客 音</span></li>
+    <li><b>左から右へ</b><span class="ex">川 州 順 竹</span></li>
+    <li><b>横画が先</b>（横と縦が交わるとき）<span class="ex">十 大 木 春</span></li>
+    <li><b>中を先に</b>（左右がつり合う形）<span class="ex">小 水 承 業</span></li>
+    <li><b>外側を先に</b>（かこむ形）<span class="ex">国 月 同 風</span></li>
+    <li><b>左はらいが先</b><span class="ex">文 父 人 天</span></li>
+    <li><b>つらぬく縦画は最後</b><span class="ex">中 車 事 書</span></li>
+    <li><b>つらぬく横画は最後</b><span class="ex">女 子 母 世</span></li>
+  </ol>
+  <h3>部首の位置でおぼえる</h3>
+  <ol>
+    <li><b>へん → つくり</b><span class="ex">村 話 明</span></li>
+    <li><b>かんむり → 下</b><span class="ex">草 空 家</span></li>
+    <li><b>たれ → 中身</b><span class="ex">広 店 病</span></li>
+    <li><b>にょうは最後</b><span class="ex">道 週 建</span>
+      <span class="warn">ただし「走にょう」は先 →</span><span class="ex">起 越</span></li>
+    <li><b>くにがまえ</b>は 左のたて → 上の横とみぎのたて → 中身 → <b>最後に下の横でフタ</b><span class="ex">国 回 図</span></li>
+  </ol>
+  <h3>まちがえやすい漢字（見出しの字は書き順番号つき）</h3>
+  <table>
+    <tr><th>右</th><td>左はらいが先。「一」から書くのはまちがい。</td><th>左</th><td>横画が先。<span class="warn">「右」とぎゃく</span>。最大のひっかけ。</td></tr>
+    <tr><th>上</th><td>たて → 短い横 → 長い横。</td><th>田</th><td>たて → 横折れ → 中 → 最後に下の横。</td></tr>
+    <tr><th>馬</th><td>たてから。点4つは最後。</td><th>母</th><td>つらぬく横画が最後。</td></tr>
+    <tr><th>区</th><td>中身を先に、はこは最後。</td><th>発</th><td>上の「はつがしら」から。</td></tr>
+  </table>
+  <h3>おうちの方へ</h3>
+  <p>お手本マスの各画についている小さな数字が書き順です。番号が見えないときはお手本マスを大きくしてください（<b>70pt以上</b>が目安）。<br>
+  個別の書き順を確かめたいときは、日本漢字能力検定協会「漢字ペディア」や、文部省『筆順指導の手びき』にもとづく漢字辞典が確実です。書き順が一つに定まらない字もあり、学校では手びきの形で指導されます。</p>
+  </div></div>`;
+}
+
+["from","to","msize","psize","gap","tracefont","guide","legend","showrules"].forEach(id=>{
+  const h=()=>render();
+  $(id).addEventListener("input",h); $(id).addEventListener("change",h);
+});
+$("kanji").addEventListener("input",()=>{store[grade]=$("kanji").value;render();});
+$("tricky").addEventListener("change",()=>{resetRange();render();});
+$("printBtn").onclick=()=>window.print();
+
+$("kanji").value=store[1];
+$("gradenote").innerHTML=GRADES[1].note;
+resetRange();
+render();
+</script>
+</body>
+</html>
