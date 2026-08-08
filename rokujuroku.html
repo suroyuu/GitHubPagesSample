@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>六十六 — 二人トリックテイキング</title>
+<style>
+  :root{
+    --bg-1:#2B1822;      /* 葡萄茶 */
+    --bg-2:#170C13;
+    --line:rgba(226,208,200,.16);
+    --ivory:#F2ECDF;     /* 札面 */
+    --sumi:#1B1518;      /* 黒スート */
+    --shu:#C13B2E;       /* 赤スート */
+    --sei:#5FB8A8;       /* 青磁：強調 */
+    --mute:#A8909B;      /* 補助文字 */
+    --gold:#C9A227;
+    --cw:66px; --ch:94px;
+    --face:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
+    --rank:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0; padding:14px 12px 26px; min-height:100vh;
+    font-family:var(--ui); color:var(--ivory);
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 6px),
+      radial-gradient(130% 100% at 50% -10%, var(--bg-1) 0%, var(--bg-2) 70%, #0B0509 100%);
+    background-attachment:fixed;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .wrap{width:100%; max-width:600px}
+
+  /* ヘッダー */
+  header{display:flex; align-items:flex-end; justify-content:space-between; gap:12px}
+  h1{font-family:var(--face); font-size:27px; font-weight:600; margin:0; letter-spacing:.3em; text-indent:.3em; line-height:1}
+  h1 small{display:block; font-family:var(--mono); font-size:8.5px; letter-spacing:.18em; color:var(--mute); margin-top:8px; text-indent:0}
+  .tools{display:flex; gap:7px}
+  .tbtn{font-family:var(--mono); font-size:10.5px; color:var(--ivory); background:rgba(255,255,255,.06);
+    border:1px solid var(--line); border-radius:5px; padding:6px 9px; cursor:pointer}
+  .tbtn[aria-pressed="false"]{color:var(--mute)}
+  .tbtn:hover{border-color:var(--sei)}
+  .hr{height:1px; background:linear-gradient(90deg,var(--sei),rgba(95,184,168,0) 65%); margin:9px 0 4px}
+
+  /* 盤面 */
+  .row{display:flex; align-items:center; gap:10px; min-height:calc(var(--ch) + 4px)}
+  .tag{font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; color:var(--mute); white-space:nowrap; width:52px}
+  .tag b{display:block; font-family:var(--ui); font-size:21px; color:var(--ivory); font-weight:500; letter-spacing:0; line-height:1.25}
+  .tag b.near{color:var(--sei)}
+  .hand{display:flex; gap:6px; flex-wrap:wrap}
+
+  /* 中央 */
+  .mid{display:flex; align-items:center; justify-content:space-between; gap:12px;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:12px 2px; margin:6px 0}
+  .trick{display:flex; gap:10px; align-items:center; min-height:var(--ch)}
+  .tslot{width:var(--cw); height:var(--ch); border-radius:7px; border:1px dashed rgba(226,208,200,.14); position:relative}
+  .tslot.filled{border-color:transparent}
+  .tslot .who{position:absolute; top:-14px; left:0; font-family:var(--mono); font-size:8.5px; color:var(--mute); letter-spacing:.1em}
+  .stockArea{display:flex; align-items:center; gap:9px}
+  .stockWrap{position:relative; width:122px; height:var(--ch)}
+  .stockWrap .lie{position:absolute; width:var(--cw); height:var(--ch);
+    left:calc(50% - var(--cw)/2 + 13px); top:calc(50% - var(--ch)/2); transform:rotate(90deg)}
+  .stockWrap .top{position:absolute; left:0; top:0; z-index:2}
+  .stockWrap.empty .top{display:none}
+  .stockInfo{font-family:var(--mono); font-size:9.5px; color:var(--mute); letter-spacing:.12em; text-align:right; line-height:1.7}
+  .stockInfo b{display:block; font-size:19px; color:var(--ivory); font-family:var(--ui); font-weight:500; letter-spacing:0}
+  .stockInfo .tsuit{font-size:22px; font-family:var(--rank)}
+  .tsuit.red{color:var(--shu)} .tsuit.blk{color:#E2D0C8}
+
+  /* 札 */
+  .card{width:var(--cw); height:var(--ch); border-radius:7px; position:relative; flex:0 0 auto;
+    background:var(--ivory); color:var(--sumi); border:none; padding:5px; text-align:left;
+    font-family:var(--rank); user-select:none; display:block;
+    box-shadow:0 2px 0 rgba(0,0,0,.4), 0 7px 15px rgba(0,0,0,.35), inset 0 0 0 1px rgba(27,21,24,.2);
+    transition:transform .14s ease, box-shadow .14s ease, opacity .2s}
+  .card .r{font-size:19px; font-weight:600; line-height:1; display:block}
+  .card .s{font-size:14px; line-height:1.2; display:block}
+  .card .big{position:absolute; right:4px; bottom:3px; font-size:29px; opacity:.15; line-height:1}
+  .card .v{position:absolute; right:5px; top:5px; font-family:var(--mono); font-size:9px; opacity:.42}
+  .card.red{color:var(--shu)}
+  .card.back{background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 3px, transparent 3px 8px),
+      linear-gradient(155deg,#4A2432,#22111B);
+    box-shadow:0 2px 0 rgba(0,0,0,.45), 0 6px 13px rgba(0,0,0,.3), inset 0 0 0 1px rgba(226,208,200,.22)}
+  .card.trumpcard{box-shadow:0 2px 0 rgba(0,0,0,.4), 0 7px 15px rgba(0,0,0,.35), inset 0 0 0 2px var(--sei)}
+  button.card{cursor:default}
+  button.card.ok{cursor:pointer}
+  button.card.ok:hover{transform:translateY(-7px); box-shadow:0 12px 22px rgba(0,0,0,.45), inset 0 0 0 2px var(--sei)}
+  button.card.ok:focus-visible{outline:2px solid var(--sei); outline-offset:3px}
+  button.card.no{opacity:.42}
+
+  /* 行動 */
+  .bar{min-height:30px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 2px}
+  .act{font-family:var(--ui); font-size:11.5px; color:var(--bg-2); background:var(--sei); border:none;
+    border-radius:99px; padding:7px 14px; cursor:pointer; font-weight:600}
+  .act:hover{filter:brightness(1.1)}
+  .act.ghost{background:transparent; color:var(--sei); border:1px solid var(--sei); font-weight:400}
+  #log{font-size:12px; color:var(--mute); line-height:1.6; min-height:3.4em; margin:2px 0 0}
+  #log b{color:var(--ivory); font-weight:500}
+  #log .pt{color:var(--sei); font-family:var(--mono)}
+
+  /* 残り札パネル */
+  .counter{margin-top:14px; border-top:1px solid var(--line); padding-top:12px}
+  .counter h2{font-family:var(--mono); font-size:9.5px; letter-spacing:.18em; color:var(--mute); font-weight:400; margin:0 0 8px}
+  .grid{display:grid; grid-template-columns:22px repeat(5,1fr); gap:4px; max-width:340px}
+  .gh{font-family:var(--mono); font-size:9px; color:var(--mute); text-align:center; align-self:center}
+  .gs{font-family:var(--rank); font-size:15px; text-align:center; align-self:center}
+  .gs.red{color:var(--shu)}
+  .cell{font-family:var(--rank); font-size:12.5px; text-align:center; padding:4px 0; border-radius:4px;
+    border:1px solid var(--line); color:var(--mute)}
+  .cell.mine{background:rgba(95,184,168,.18); border-color:var(--sei); color:var(--ivory)}
+  .cell.gone{opacity:.26; text-decoration:line-through}
+  .cell.up{border-color:var(--gold); color:var(--gold)}
+  .cell.opp{border-color:var(--shu); color:#E5A196}
+  .legend{font-family:var(--mono); font-size:9px; color:var(--mute); margin-top:8px; letter-spacing:.06em}
+  .counter.off{display:none}
+
+  footer{font-family:var(--mono); font-size:10px; color:var(--mute); letter-spacing:.12em; margin-top:14px;
+    display:flex; justify-content:space-between; border-top:1px solid var(--line); padding-top:10px}
+  footer b{color:var(--sei); font-size:13px}
+
+  /* オーバーレイ */
+  #ov{position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:20px; overflow:auto;
+    background:radial-gradient(60% 60% at 50% 40%, rgba(43,24,34,.93), rgba(8,4,7,.97)); backdrop-filter:blur(3px)}
+  #ov.hide{display:none}
+  .panel{max-width:430px; width:100%}
+  .panel h2{font-family:var(--face); font-size:21px; font-weight:500; letter-spacing:.16em; margin:0 0 12px; text-align:center}
+  .panel .lead{font-size:12.5px; color:var(--mute); line-height:2; margin:0 0 18px}
+  .panel .lead b{color:var(--ivory); font-weight:500}
+  .panel dl{margin:0 0 20px; font-size:12px; line-height:1.85; color:var(--mute)}
+  .panel dt{color:var(--sei); font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; margin-top:11px}
+  .panel dd{margin:2px 0 0}
+  .panel dd b{color:var(--ivory); font-weight:500}
+  .go{display:block; margin:0 auto; font-family:var(--face); font-size:15px; letter-spacing:.26em; text-indent:.26em;
+    color:var(--bg-2); background:var(--sei); border:none; border-radius:99px; padding:13px 32px; cursor:pointer;
+    box-shadow:0 6px 20px rgba(95,184,168,.24); transition:transform .12s}
+  .go:hover{transform:translateY(-2px)}
+  .tally{text-align:center; font-family:var(--mono); font-size:11px; color:var(--mute); margin:14px 0 0; letter-spacing:.1em}
+
+  @keyframes deal{from{transform:translateY(14px) scale(.94); opacity:0} to{transform:none; opacity:1}}
+  @keyframes land{from{transform:translateY(-22px) scale(1.08); opacity:0} to{transform:none; opacity:1}}
+  @keyframes pop{from{transform:scale(.92); opacity:0} to{transform:none; opacity:1}}
+  .a-deal{animation:deal .22s ease-out}
+  .a-land{animation:land .24s cubic-bezier(.2,1.2,.4,1)}
+  .a-pop{animation:pop .3s ease-out}
+
+  @media (max-width:430px){
+    :root{--cw:58px; --ch:83px}
+    h1{font-size:22px}
+    .mid{flex-direction:column; align-items:flex-start; gap:14px}
+    .stockArea{align-self:flex-end}
+    .tag{width:46px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>六十六<small>SCHNAPSEN · TWO-HAND TRICK GAME</small></h1>
+    <div class="tools">
+      <select class="tbtn" id="level" aria-label="あいての強さ">
+        <option value="easy">よわい</option>
+        <option value="normal" selected>ふつう</option>
+        <option value="hard">つよい</option>
+      </select>
+      <button class="tbtn" id="btnPeek" aria-pressed="true">残り札</button>
+      <button class="tbtn" id="btnRules">ルール</button>
+    </div>
+  </header>
+  <div class="hr"></div>
+
+  <!-- あいて -->
+  <div class="row">
+    <div class="tag">あいて<b id="cpuPts">0</b></div>
+    <div class="hand" id="cpuHand"></div>
+  </div>
+
+  <!-- 場 -->
+  <div class="mid">
+    <div class="trick">
+      <div class="tslot" id="slotCpu"><span class="who">あいて</span></div>
+      <div class="tslot" id="slotMe"><span class="who">あなた</span></div>
+    </div>
+    <div class="stockArea">
+      <div class="stockWrap" id="stockWrap">
+        <div class="card trumpcard lie" id="trumpCard"></div>
+        <div class="card back top" id="stockTop"></div>
+      </div>
+      <div class="stockInfo">やまふだ<b id="stockN">10</b>きりふだ<span class="tsuit" id="tSuit">♠</span></div>
+    </div>
+  </div>
+
+  <p id="log"></p>
+  <div class="bar" id="actions"></div>
+
+  <!-- あなた -->
+  <div class="row">
+    <div class="tag">あなた<b id="myPts">0</b></div>
+    <div class="hand" id="myHand"></div>
+  </div>
+
+  <!-- 残り札 -->
+  <section class="counter" id="counter">
+    <h2>のこりの札 — 相手の手札か山札にある札</h2>
+    <div class="grid" id="grid"></div>
+    <p class="legend">青枠＝自分の手札／取り消し線＝場に出た札／金枠＝表向きの切り札／赤枠＝相手が持つと判明／無印＝相手か山札</p>
+  </section>
+
+  <footer><span>つうさん <b id="tally">0 - 0</b></span><span id="phase">前半・自由に出せる</span></footer>
+</div>
+
+<div id="ov">
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ===== 札 ===== */
+const SUITS = ['♠','♥','♦','♣'];
+const RED = s => s === '♥' || s === '♦';
+const RANKS = [ {r:'A',v:11,o:5}, {r:'10',v:10,o:4}, {r:'K',v:4,o:3}, {r:'Q',v:3,o:2}, {r:'J',v:2,o:1} ];
+const DECK = [];
+for (const s of SUITS) for (const x of RANKS) DECK.push({s, r:x.r, v:x.v, o:x.o, k:s+x.r});
+
+const G = {
+  hands:[[],[]],          // 0 = あなた, 1 = あいて
+  stock:[],               // 末尾が表向きの切り札
+  trump:'♠',
+  lead:0,                 // このトリックのリード側
+  trick:[],               // [{p, c}]
+  pts:[0,0],
+  played:new Set(),
+  forceLead:null,         // 結婚宣言後に出すべきスート
+  busy:true, over:true,
+  tally:[0,0], dealNo:0,
+  peek:true
+};
+
+const phase2 = () => G.stock.length === 0;
+const toMove = () => G.trick.length === 0 ? G.lead : 1 - G.lead;
+const beats = (c, lead, t) =>
+  c.s === lead.s ? c.o > lead.o : c.s === t;
+
+function legalMoves(p, st){
+  st = st || G;
+  const hand = st.hands[p];
+  if (st.trick.length === 0){
+    if (st.forceLead) {
+      const m = hand.filter(c => c.s === st.forceLead && (c.r === 'K' || c.r === 'Q'));
+      if (m.length) return m;
+    }
+    return hand.slice();
+  }
+  const lead = st.trick[0].c;
+  if (st.stock.length > 0) return hand.slice();          // 前半：自由
+  const same = hand.filter(c => c.s === lead.s);
+  if (same.length){
+    const hi = same.filter(c => c.o > lead.o);
+    return hi.length ? hi : same;                        // 追随＋勝てるなら勝つ
+  }
+  const tr = hand.filter(c => c.s === st.trump);
+  return tr.length ? tr : hand.slice();
+}
+
+function trickWinner(st){
+  const [a, b] = st.trick;
+  return beats(b.c, a.c, st.trump) ? b.p : a.p;
+}
+
+function marriages(p, st){
+  st = st || G;
+  const h = st.hands[p], out = [];
+  if (st.trick.length !== 0 || st.forceLead) return out;
+  for (const s of SUITS){
+    if (st.declared && st.declared.has(p + s)) continue;
+    if (h.some(c => c.s === s && c.r === 'K') && h.some(c => c.s === s && c.r === 'Q'))
+      out.push({suit:s, pts: s === st.trump ? 40 : 20});
+  }
+  return out;
+}
+const canSwapJack = (p, st) => {
+  st = st || G;
+  return st.trick.length === 0 && st.stock.length > 1 && !st.forceLead &&
+         st.hands[p].some(c => c.s === st.trump && c.r === 'J');
+};
+
+/* ===== 描画 ===== */
+function cardNode(c, tag){
+  const e = document.createElement(tag || 'div');
+  e.className = 'card' + (RED(c.s) ? ' red' : '');
+  e.innerHTML = `<span class="r">${c.r}</span><span class="s">${c.s}</span>` +
+                `<span class="v">${c.v}</span><span class="big">${c.s}</span>`;
+  return e;
+}
+
+let prevKeys = new Set(), prevCpu = 0;
+function render(){
+  // 自分の手札
+  const legal = (!G.busy && !G.over && toMove() === 0) ? legalMoves(0) : [];
+  const lk = new Set(legal.map(c => c.k));
+  const mh = $('myHand'); mh.replaceChildren();
+  for (const c of G.hands[0]){
+    const b = cardNode(c, 'button');
+    b.classList.add(lk.has(c.k) ? 'ok' : 'no');
+    b.disabled = !lk.has(c.k);
+    if (!prevKeys.has(c.k)) b.classList.add('a-deal');
+    b.addEventListener('click', () => humanPlay(c));
+    mh.appendChild(b);
+  }
+  prevKeys = new Set(G.hands[0].map(c => c.k));
+  // 相手の手札（裏）
+  const ch = $('cpuHand'); ch.replaceChildren();
+  for (let i = 0; i < G.hands[1].length; i++){
+    const e = document.createElement('div');
+    e.className = 'card back' + (i >= prevCpu ? ' a-deal' : '');
+    ch.appendChild(e);
+  }
+  prevCpu = G.hands[1].length;
+  // 場
+  for (const [id, p] of [['slotMe',0],['slotCpu',1]]){
+    const el = $(id), t = G.trick.find(x => x.p === p);
+    el.querySelectorAll('.card').forEach(n => n.remove());
+    el.classList.toggle('filled', !!t);
+    if (t){ const n = cardNode(t.c); n.classList.add('a-land'); el.appendChild(n); }
+  }
+  // 山札・切り札
+  const up = G.stock[G.stock.length - 1];
+  $('stockWrap').classList.toggle('empty', G.stock.length <= 1);
+  const tc = $('trumpCard');
+  tc.style.visibility = up ? 'visible' : 'hidden';
+  if (up){ tc.className = 'card trumpcard lie' + (RED(up.s) ? ' red' : '');
+    tc.innerHTML = `<span class="r">${up.r}</span><span class="s">${up.s}</span><span class="big">${up.s}</span>`; }
+  $('stockN').textContent = G.stock.length;
+  const ts = $('tSuit'); ts.textContent = G.trump; ts.className = 'tsuit ' + (RED(G.trump) ? 'red' : 'blk');
+  // 得点
+  for (const [id, p] of [['myPts',0],['cpuPts',1]]){
+    $(id).textContent = G.pts[p];
+    $(id).classList.toggle('near', G.pts[p] >= 50);
+  }
+  $('tally').textContent = `${G.tally[0]} - ${G.tally[1]}`;
+  $('phase').textContent = G.over ? '—' : (phase2() ? '後半・追随義務あり' : '前半・自由に出せる');
+  renderActions();
+  renderCounter();
+}
+
+function renderActions(){
+  const bar = $('actions'); bar.replaceChildren();
+  if (G.busy || G.over || toMove() !== 0 || G.trick.length) return;
+  for (const m of marriages(0)){
+    const b = document.createElement('button');
+    b.className = 'act'; b.textContent = `${m.suit} の K・Q を宣言（+${m.pts}）`;
+    b.addEventListener('click', () => declare(0, m));
+    bar.appendChild(b);
+  }
+  if (canSwapJack(0)){
+    const b = document.createElement('button');
+    b.className = 'act ghost'; b.textContent = `切り札の J を交換`;
+    b.addEventListener('click', () => swapJack(0));
+    bar.appendChild(b);
+  }
+}
+
+function renderCounter(){
+  $('counter').classList.toggle('off', !G.peek);
+  if (!G.peek) return;
+  const g = $('grid'); g.replaceChildren();
+  const head = document.createElement('div'); head.className = 'gh'; head.textContent = '';
+  g.appendChild(head);
+  for (const x of RANKS){ const h = document.createElement('div'); h.className = 'gh'; h.textContent = x.r; g.appendChild(h); }
+  const mine = new Set(G.hands[0].map(c => c.k));
+  const up = G.stock[G.stock.length - 1];
+  for (const s of SUITS){
+    const sl = document.createElement('div');
+    sl.className = 'gs' + (RED(s) ? ' red' : ''); sl.textContent = s; g.appendChild(sl);
+    for (const x of RANKS){
+      const k = s + x.r, cell = document.createElement('div');
+      cell.className = 'cell' + (RED(s) ? ' red' : '');
+      cell.textContent = x.r;
+      if (mine.has(k)) cell.classList.add('mine');
+      else if (G.played.has(k)) cell.classList.add('gone');
+      else if (up && up.k === k) cell.classList.add('up');
+      else if ((G.knownIn || {})[k] === 1) cell.classList.add('opp');
+      g.appendChild(cell);
+    }
+  }
+}
+
+let logLines = [];
+function say(html){
+  logLines.push(html); if (logLines.length > 3) logLines.shift();
+  $('log').innerHTML = logLines.join('<br>');
+}
+const nameOf = p => p === 0 ? 'あなた' : 'あいて';
+const cardTxt = c => `<b>${c.s}${c.r}</b>`;
+/* ===== 進行 ===== */
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const sortHand = p => G.hands[p].sort((a,b)=> SUITS.indexOf(a.s)-SUITS.indexOf(b.s) || b.o-a.o);
+
+function newDeal(){
+  const d = shuffle(DECK.slice());
+  G.hands = [d.slice(0,5), d.slice(5,10)];
+  G.stock = d.slice(10);
+  G.trump = G.stock[G.stock.length-1].s;
+  G.pts = [0,0]; G.played = new Set(); G.knownIn = {}; G.declared = new Set();
+  G.trick = []; G.forceLead = null;
+  G.lead = G.dealNo % 2; G.dealNo++;
+  G.over = false; G.busy = false;
+  sortHand(0); sortHand(1);
+  logLines = [];
+  say(`切り札は <b>${G.trump}</b>。${G.lead===0?'あなた':'あいて'}のリードです。`);
+  render();
+  if (toMove() === 1) cpuTurn();
+}
+
+function humanPlay(c){
+  if (G.busy || G.over || toMove() !== 0) return;
+  if (!legalMoves(0).some(x => x.k === c.k)) return;
+  playCard(0, c);
+}
+
+function playCard(p, c){
+  G.hands[p] = G.hands[p].filter(x => x.k !== c.k);
+  G.trick.push({p, c});
+  G.played.add(c.k); delete G.knownIn[c.k];
+  G.forceLead = null;
+  G.busy = true;
+  say(`${nameOf(p)}：${cardTxt(c)}`);
+  render();
+  if (G.trick.length === 2) setTimeout(resolveTrick, 1000);
+  else setTimeout(() => {
+    G.busy = false; render();
+    if (toMove() === 1) cpuTurn();
+  }, 220);
+}
+
+function resolveTrick(){
+  const w = trickWinner(G);
+  const gain = G.trick[0].c.v + G.trick[1].c.v;
+  G.pts[w] += gain;
+  G.trick = []; G.lead = w;
+  say(`<b>${nameOf(w)}</b>がトリックを取りました <span class="pt">+${gain}</span>`);
+
+  const finished = G.hands[0].length === 0 && G.hands[1].length === 0;
+  if (finished){
+    G.pts[w] += 10;
+    say(`最後のトリック <span class="pt">+10</span>`);
+    return endDeal();
+  }
+  if (G.pts[w] >= 66){ render(); return endDeal(); }
+
+  if (G.stock.length){
+    G.hands[w].push(G.stock.shift());
+    G.hands[1-w].push(G.stock.shift());
+    sortHand(0); sortHand(1);
+    if (G.stock.length === 0) say('山札が尽きました。<b>ここからは追随義務あり</b>。');
+  }
+  G.busy = false; render();
+  if (toMove() === 1) cpuTurn();
+}
+
+function declare(p, m){
+  G.pts[p] += m.pts;
+  G.forceLead = m.suit;
+  G.declared.add(p + m.suit);
+  if (p === 1){ G.knownIn[m.suit + 'K'] = 1; G.knownIn[m.suit + 'Q'] = 1; }
+  say(`${nameOf(p)}：<b>${m.suit} の K・Q</b> を宣言 <span class="pt">+${m.pts}</span>`);
+  if (G.pts[p] >= 66){ render(); endDeal(); return true; }
+  render();
+  return false;
+}
+
+function swapJack(p){
+  const j = G.hands[p].find(c => c.s === G.trump && c.r === 'J');
+  const up = G.stock[G.stock.length-1];
+  G.hands[p] = G.hands[p].filter(c => c.k !== j.k);
+  G.hands[p].push(up);
+  G.stock[G.stock.length-1] = j;
+  if (p === 1) G.knownIn[up.k] = 1;      // 相手が持っていることが判明
+  delete G.knownIn[j.k];
+  sortHand(p);
+  say(`${nameOf(p)}：切り札の J を ${cardTxt(up)} と交換`);
+  render();
+}
+
+function endDeal(){
+  G.over = true; G.busy = true;
+  const w = G.pts[0] > G.pts[1] ? 0 : G.pts[1] > G.pts[0] ? 1 : -1;
+  if (w >= 0) G.tally[w]++;
+  render();
+  setTimeout(() => showResult(w), 800);
+}
+
+/* ===== 相手の手番 ===== */
+function cpuTurn(){
+  G.busy = true; render();
+  setTimeout(() => {
+    if (G.over) return;
+    if (canSwapJack(1)) swapJack(1);
+    const ms = marriages(1).sort((a,b) => b.pts - a.pts);
+    if (ms.length && declare(1, ms[0])) return;
+    playCard(1, aiChoose());
+  }, 560);
+}
+
+/* ===== 画面（オーバーレイ） ===== */
+const RULES = `
+<dl>
+  <dt>つかう札</dt><dd>各スートの <b>A・10・K・Q・J</b> の20枚。点は <b>A=11 / 10=10 / K=4 / Q=3 / J=2</b>。</dd>
+  <dt>ならべ</dt><dd>5枚ずつ配り、残り10枚が山札。その一番下を表向きにした札のスートが<b>切り札</b>です。</dd>
+  <dt>前半</dt><dd>山札があるうちは<b>どの札を出してもかまいません</b>。トリックを取った側が山札から先に1枚引きます。</dd>
+  <dt>後半</dt><dd>山札が尽きたら<b>同じスートを出す義務</b>。出せるなら勝てる札を出す義務。スートがなければ切り札を出す義務。</dd>
+  <dt>勝ち負け</dt><dd>同スートなら強い札（A&gt;10&gt;K&gt;Q&gt;J）、切り札は他スートに勝ちます。取った札の点が入ります。</dd>
+  <dt>結婚</dt><dd>自分のリード時、同じスートの <b>K と Q</b> を持っていれば宣言して <b>+20点</b>（切り札なら +40点）。宣言したらそのKかQをリードします。</dd>
+  <dt>切り札のJ</dt><dd>自分のリード時、切り札のJを表向きの切り札と<b>交換</b>できます。</dd>
+  <dt>目標</dt><dd>先に <b>66点</b> に届いた方の勝ち。最後のトリックには +10点。10トリック終わって届かなければ点の多い方の勝ちです。</dd>
+</dl>`;
+
+function overlay(html){ $('panel').innerHTML = html; $('panel').classList.remove('a-pop'); void $('panel').offsetWidth;
+  $('panel').classList.add('a-pop'); $('ov').classList.remove('hide'); }
+function closeOverlay(){ $('ov').classList.add('hide'); }
+
+function showStart(){
+  overlay(`<h2>六十六</h2>
+    <p class="lead">20枚の札で戦う、二人用のトリックテイキングです。<br>
+    相手の手札は見えません。<b>出された札と出せなかった札</b>から、相手が何を持っているかを読み切ってください。<br>
+    相手のCPUもあなたの手札を見ていません。見えている情報だけで未知の札を何度も配り直し、平均して一番得な手を選びます。</p>
+    ${RULES}
+    <button class="go" id="btnGo">はじめる</button>`);
+  $('btnGo').addEventListener('click', () => { closeOverlay(); newDeal(); });
+}
+
+function showRules(){
+  overlay(`<h2>ルール</h2>${RULES}<button class="go" id="btnGo">とじる</button>`);
+  $('btnGo').addEventListener('click', closeOverlay);
+}
+
+function showResult(w){
+  const title = w === 0 ? 'あなたの勝ち' : w === 1 ? 'あいての勝ち' : '引き分け';
+  overlay(`<h2>${title}</h2>
+    <p class="lead" style="text-align:center">
+      あなた <b>${G.pts[0]}</b> 点 ／ あいて <b>${G.pts[1]}</b> 点</p>
+    <button class="go" id="btnGo">つぎの手札</button>
+    <p class="tally">つうさん ${G.tally[0]} - ${G.tally[1]}</p>`);
+  $('btnGo').addEventListener('click', () => { closeOverlay(); newDeal(); });
+}
+
+$('btnRules').addEventListener('click', showRules);
+$('btnPeek').addEventListener('click', e => {
+  G.peek = !G.peek;
+  e.target.setAttribute('aria-pressed', G.peek);
+  renderCounter();
+});
+
+/* ===== CPUの思考 =====
+   見えているのは「自分の手札・すでに場に出た札・表向きの切り札」だけ。
+   未知の札を何通りにも配り直し（determinization）、それぞれで最後まで打ち切って
+   平均点差が最も良い手を選ぶ。あなたの手札は一切のぞいていない。            */
+const LEVELS = { easy:{n:14, slip:.28}, normal:{n:90, slip:.06}, hard:{n:420, slip:0} };
+const level = () => LEVELS[($('level') && $('level').value) || 'normal'] || LEVELS.normal;
+
+function greedy(st, p, mv){
+  if (mv.length === 1) return mv[0];
+  if (st.trick.length){
+    const lead = st.trick[0].c;
+    const wins = mv.filter(c => beats(c, lead, st.trump));
+    if (wins.length){
+      const plain = wins.filter(c => c.s !== st.trump);
+      const pick = (plain.length ? plain : wins).reduce((a,b) => a.o < b.o ? a : b);
+      if (st.stock.length === 0 || lead.v + pick.v >= 11 || pick.v <= 4) return pick;
+    }
+    const dump = mv.filter(c => c.s !== st.trump);
+    return (dump.length ? dump : mv).reduce((a,b) => a.v < b.v ? a : b);
+  }
+  const plain = mv.filter(c => c.s !== st.trump);
+  const pool = plain.length ? plain : mv;
+  if (st.stock.length === 0){
+    const tr = mv.filter(c => c.s === st.trump);
+    if (tr.length >= 2) return tr.reduce((a,b) => a.o > b.o ? a : b);
+    const ace = pool.filter(c => c.o === 5);
+    if (ace.length) return ace[0];
+  }
+  return pool.reduce((a,b) => a.v < b.v ? a : b);
+}
+
+function playout(st){
+  let guard = 0;
+  while (guard++ < 40){
+    if (st.trick.length === 2){
+      const w = beats(st.trick[1].c, st.trick[0].c, st.trump) ? st.trick[1].p : st.trick[0].p;
+      st.pts[w] += st.trick[0].c.v + st.trick[1].c.v;
+      st.trick = []; st.lead = w;
+      if (st.hands[0].length === 0 && st.hands[1].length === 0){ st.pts[w] += 10; break; }
+      if (st.pts[w] >= 66) return w === 1 ? 220 : -220;
+      if (st.stock.length){
+        st.hands[w].push(st.stock.shift());
+        st.hands[1-w].push(st.stock.shift());
+      }
+    }
+    const p = st.trick.length === 0 ? st.lead : 1 - st.lead;
+    if (st.trick.length === 0){
+      st.forceLead = null;
+      for (const s of SUITS){
+        if (st.hands[p].some(c => c.s === s && c.r === 'K') &&
+            st.hands[p].some(c => c.s === s && c.r === 'Q')){
+          st.pts[p] += s === st.trump ? 40 : 20;
+          st.forceLead = s;
+          if (st.pts[p] >= 66) return p === 1 ? 220 : -220;
+          break;
+        }
+      }
+    }
+    const c = greedy(st, p, legalMoves(p, st));
+    st.hands[p] = st.hands[p].filter(x => x.k !== c.k);
+    st.trick.push({p, c});
+    st.forceLead = null;
+  }
+  return st.pts[1] - st.pts[0];
+}
+
+function aiChoose(){
+  const legal = legalMoves(1);
+  if (legal.length === 1) return legal[0];
+  const LV = level();
+  const SAMPLES = LV.n;
+  if (Math.random() < LV.slip) return legal[(Math.random() * legal.length) | 0];
+
+  const seen = new Set(G.played);
+  for (const c of G.hands[1]) seen.add(c.k);
+  const up = G.stock[G.stock.length-1];
+  if (up) seen.add(up.k);
+
+  const forcedKeys = Object.keys(G.knownIn).filter(k => G.knownIn[k] === 0 && !seen.has(k));
+  forcedKeys.forEach(k => seen.add(k));
+  const forced = forcedKeys.map(k => DECK.find(c => c.k === k));
+  const pool = DECK.filter(c => !seen.has(c.k));
+  const oppN = G.hands[0].length;
+  const need = Math.max(0, oppN - forced.length);
+
+  const tally = new Map(legal.map(c => [c.k, 0]));
+  for (let i = 0; i < SAMPLES; i++){
+    const bag = shuffle(pool.slice());
+    const oppHand = forced.concat(bag.slice(0, need));
+    const stock = bag.slice(need).concat(up ? [up] : []);
+    for (const c of legal){
+      const st = {
+        hands: [oppHand.slice(), G.hands[1].filter(x => x.k !== c.k)],
+        stock: stock.slice(),
+        trump: G.trump,
+        lead: G.trick.length ? G.trick[0].p : 1,
+        trick: G.trick.slice(),
+        pts: [G.pts[0], G.pts[1]],
+        forceLead: null
+      };
+      st.trick.push({p:1, c});
+      tally.set(c.k, tally.get(c.k) + playout(st));
+    }
+  }
+
+  let best = legal[0], bv = -Infinity;
+  for (const c of legal){
+    let v = tally.get(c.k) / SAMPLES;
+    const mate = c.r === 'K' ? 'Q' : c.r === 'Q' ? 'K' : null;
+    if (mate && G.hands[1].some(x => x.s === c.s && x.r === mate))
+      v -= (c.s === G.trump ? 34 : 17);          // 結婚を崩す手は割り引く
+    if (v > bv){ bv = v; best = c; }
+  }
+  return best;
+}
+
+/* ===== 起動 ===== */
+G.knownIn = {}; G.declared = new Set();
+render();
+showStart();
+</script>
+</body>
+</html>

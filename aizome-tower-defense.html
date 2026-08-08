@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>藍染タワーディフェンス</title>
+<style>
+  :root{
+    --sumi:#0b1524; --ai-deep:#12233d; --ai:#1b3a63; --asagi:#74b6c6;
+    --kinari:#e9dfc7; --kinari-dim:#c9bfa6; --akane:#c4453c; --kincha:#d9a441; --shiro:#f5f1e6;
+    --line:rgba(233,223,199,.16);
+    --mincho:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP",serif;
+    --gothic:"Hiragino Sans","Yu Gothic UI","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(120% 90% at 50% -10%, #1a3255 0%, transparent 60%), var(--sumi);
+    color:var(--kinari);font-family:var(--gothic);-webkit-font-smoothing:antialiased;
+    display:flex;justify-content:center;padding:20px 16px 40px;
+  }
+  .app{width:100%;max-width:1160px}
+
+  .masthead{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:18px}
+  .masthead h1{font-family:var(--mincho);font-size:clamp(22px,3.4vw,34px);font-weight:600;letter-spacing:.22em;margin:0;color:var(--shiro)}
+  .masthead .romaji{font-size:11px;letter-spacing:.42em;text-transform:uppercase;color:var(--asagi);opacity:.75}
+  .masthead .tagline{margin-left:auto;font-size:12px;color:var(--kinari-dim);letter-spacing:.08em}
+
+  .board{display:grid;grid-template-columns:minmax(0,1fr) 282px;gap:18px;align-items:start}
+  @media (max-width:900px){.board{grid-template-columns:1fr}}
+
+  .stage{position:relative;border:1px solid var(--line);background:var(--ai-deep);border-radius:2px;overflow:hidden}
+  canvas{display:block;width:100%;height:auto;touch-action:manipulation;cursor:crosshair}
+
+  .readout{display:flex;border:1px solid var(--line);border-bottom:none;background:linear-gradient(180deg,#16294a,#12233d)}
+  .readout div{flex:1;padding:9px 12px;border-right:1px solid var(--line)}
+  .readout div:last-child{border-right:none}
+  .readout dt{font-size:10px;letter-spacing:.24em;color:var(--asagi);margin:0 0 3px}
+  .readout dd{margin:0;font-family:var(--mincho);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--shiro);line-height:1}
+  .readout .warn dd{color:var(--akane)}
+  .readout .gold dd{color:var(--kincha)}
+
+  .panel{display:flex;flex-direction:column;gap:14px}
+  .card{border:1px solid var(--line);background:rgba(27,58,99,.32);padding:12px}
+  .card h2{font-size:10px;letter-spacing:.3em;color:var(--asagi);margin:0 0 10px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .card h2 .lock{letter-spacing:.06em;color:var(--akane);font-size:10px}
+  .card h2 .lock[hidden]{display:none}
+
+  .shop{display:flex;flex-direction:column;gap:6px}
+  .tower-btn{
+    display:grid;grid-template-columns:28px 1fr auto;gap:9px;align-items:center;width:100%;text-align:left;
+    padding:8px 9px;background:rgba(11,21,36,.5);color:var(--kinari);border:1px solid var(--line);border-radius:2px;
+    font-family:inherit;font-size:13px;cursor:pointer;transition:border-color .15s,background .15s;
+  }
+  .tower-btn:hover:not(:disabled){border-color:var(--asagi);background:rgba(44,90,143,.4)}
+  .tower-btn[aria-pressed="true"]{border-color:var(--kincha);background:rgba(217,164,65,.14)}
+  .tower-btn:disabled{opacity:.35;cursor:not-allowed}
+  .tower-btn:focus-visible{outline:2px solid var(--asagi);outline-offset:2px}
+  .tower-btn .glyph{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--mincho);font-size:14px;color:#0b1524;font-weight:700}
+  .tower-btn .nm{font-family:var(--mincho);letter-spacing:.08em;font-size:14px}
+  .tower-btn .desc{display:block;font-size:10.5px;color:var(--kinari-dim);margin-top:2px;line-height:1.4}
+  .tower-btn .cost{font-variant-numeric:tabular-nums;color:var(--kincha);font-size:13px}
+
+  .detail{font-size:12px;line-height:1.75}
+  .detail .row{display:flex;justify-content:space-between;border-bottom:1px dotted rgba(233,223,199,.14);padding:2px 0}
+  .detail .row span:last-child{font-variant-numeric:tabular-nums;color:var(--shiro)}
+  .detail .empty{color:var(--kinari-dim);font-size:11.5px;line-height:1.7}
+  .detail-actions{display:flex;gap:7px;margin-top:10px}
+
+  button.act{flex:1;padding:8px;border:1px solid var(--line);border-radius:2px;background:rgba(11,21,36,.5);color:var(--kinari);font-family:inherit;font-size:12px;letter-spacing:.08em;cursor:pointer;transition:.15s}
+  button.act:hover:not(:disabled){border-color:var(--asagi)}
+  button.act:disabled{opacity:.35;cursor:not-allowed}
+  button.act:focus-visible{outline:2px solid var(--asagi);outline-offset:2px}
+  button.sell{border-color:rgba(196,69,60,.5);color:#e28a84}
+  button.sell:hover:not(:disabled){border-color:var(--akane);background:rgba(196,69,60,.15)}
+
+  .controls{display:flex;gap:8px}
+  .primary{flex:1;padding:12px;border:none;border-radius:2px;cursor:pointer;background:var(--kincha);color:#2a1d05;font-family:var(--mincho);font-size:15px;font-weight:700;letter-spacing:.14em;transition:filter .15s}
+  .primary:hover:not(:disabled){filter:brightness(1.12)}
+  .primary:disabled{background:rgba(233,223,199,.16);color:var(--kinari-dim);cursor:not-allowed}
+  .primary:focus-visible{outline:2px solid var(--shiro);outline-offset:2px}
+  .speed{width:56px;border:1px solid var(--line);background:rgba(11,21,36,.5);color:var(--kinari);font-family:var(--mincho);font-size:14px;cursor:pointer;border-radius:2px}
+  .speed:hover{border-color:var(--asagi)}
+
+  .bestiary{display:flex;flex-direction:column;gap:5px;font-size:11.5px;line-height:1.5}
+  .bestiary li{display:grid;grid-template-columns:11px 42px 1fr;gap:8px;align-items:start;list-style:none}
+  .bestiary{margin:0;padding:0}
+  .bestiary .sw{width:11px;height:11px;border-radius:2px;margin-top:3px;border:1px solid rgba(233,223,199,.3)}
+  .bestiary .en{font-family:var(--mincho);letter-spacing:.06em;color:var(--shiro)}
+  .bestiary .no{color:var(--kinari-dim)}
+
+  .hint{font-size:11px;color:var(--kinari-dim);line-height:1.85;margin:0}
+  .hint kbd{font-family:var(--gothic);font-size:10px;background:rgba(233,223,199,.12);border:1px solid var(--line);border-radius:2px;padding:1px 5px;color:var(--kinari)}
+
+  .veil{position:absolute;inset:0;display:grid;place-items:center;text-align:center;background:rgba(11,21,36,.9);backdrop-filter:blur(3px);padding:24px}
+  .veil[hidden]{display:none}
+  .veil h3{font-family:var(--mincho);font-size:clamp(24px,4vw,40px);letter-spacing:.2em;margin:0 0 10px;color:var(--shiro)}
+  .veil p{margin:0 0 20px;font-size:13px;color:var(--kinari-dim);line-height:1.9;letter-spacing:.06em}
+  .veil .primary{padding:12px 34px;flex:none}
+  .veil .seal{width:64px;height:64px;border-radius:50%;border:2px solid var(--akane);color:var(--akane);display:grid;place-items:center;margin:0 auto 18px;font-family:var(--mincho);font-size:24px;transform:rotate(-8deg)}
+  .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(11,21,36,.92);border:1px solid var(--akane);color:var(--kinari);padding:6px 16px;font-size:12px;letter-spacing:.08em;border-radius:2px;opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <h1>藍染タワーディフェンス</h1>
+    <span class="romaji">Aizome Defense</span>
+    <span class="tagline">一体たりとも、城に触れさせない。</span>
+  </header>
+
+  <div class="board">
+    <div>
+      <dl class="readout">
+        <div><dt>ウェーブ</dt><dd id="rd-wave">0 / 20</dd></div>
+        <div class="gold"><dt>藍銭</dt><dd id="rd-gold">300</dd></div>
+        <div class="warn"><dt>城</dt><dd id="rd-life">無傷</dd></div>
+        <div><dt>敵</dt><dd id="rd-enemy">0</dd></div>
+      </dl>
+      <div class="stage">
+        <canvas id="cv" width="800" height="480"></canvas>
+        <div class="toast" id="toast"></div>
+        <div class="veil" id="veil">
+          <div>
+            <h3 id="veil-title">藍染タワーディフェンス</h3>
+            <p id="veil-text">石畳の上に砦を築き、道を進む染物を止める。<br><strong style="color:#c4453c">一体でも城に届いた時点で落城。</strong><br>普請ができるのはウェーブとウェーブの合間だけ。<br>20 ウェーブ耐え切れば勝ち。</p>
+            <button class="primary" id="veil-btn">はじめる</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="controls">
+        <button class="primary" id="btn-wave">ウェーブ開始</button>
+        <button class="speed" id="btn-speed" title="ゲーム速度">×1</button>
+      </div>
+
+      <div class="card">
+        <h2>砦を建てる<span class="lock" id="lock-shop" hidden>交戦中</span></h2>
+        <div class="shop" id="shop"></div>
+      </div>
+
+      <div class="card">
+        <h2>選択中の砦</h2>
+        <div class="detail" id="detail"></div>
+      </div>
+
+      <div class="card">
+        <h2>敵の見分け</h2>
+        <ul class="bestiary" id="bestiary"></ul>
+      </div>
+
+      <div class="card">
+        <h2>操作</h2>
+        <p class="hint">
+          <kbd>1</kbd>–<kbd>5</kbd> 砦を選ぶ　<kbd>Esc</kbd> 解除<br>
+          <kbd>Space</kbd> ウェーブ開始　<kbd>F</kbd> 速度切替<br>
+          建てられるのは石畳のマスだけ。建設・強化・撤去はウェーブの合間のみ。
+        </p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ══ 盤面 ═══════════════════════════════════════════ */
+const T = 40, COLS = 20, ROWS = 12;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const WAY = [[-1,5],[4,5],[4,2],[9,2],[9,9],[14,9],[14,4],[19,4],[20,4]];
+const PATH = WAY.map(([c,r]) => ({x:(c+.5)*T, y:(r+.5)*T}));
+
+const pathTiles = new Set();
+for (let i=0;i<WAY.length-1;i++){
+  let [c,r] = WAY[i]; const [c2,r2] = WAY[i+1];
+  const dc = Math.sign(c2-c), dr = Math.sign(r2-r);
+  pathTiles.add(c+","+r);
+  while (c!==c2 || r!==r2){ c+=dc; r+=dr; pathTiles.add(c+","+r); }
+}
+const isPath = (c,r) => pathTiles.has(c+","+r);
+
+/* 石畳＝砦を置けるマス。道から2マス以内かつ市松に敷く（全240マス中70マス） */
+const plots = new Set();
+{
+  const pts = [...pathTiles].map(k => k.split(",").map(Number));
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    if (isPath(c,r)) continue;
+    let near = 99;
+    for (const [pc,pr] of pts) near = Math.min(near, Math.max(Math.abs(pc-c), Math.abs(pr-r)));
+    if (near <= 2 && (c+r) % 2 === 0) plots.add(c+","+r);
+  }
+}
+
+function seeded(n){ const x = Math.sin(n*127.1)*43758.5453; return x - Math.floor(x); }
+const weave = [];
+for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) weave.push(seeded(r*COLS+c));
+
+/* ══ 砦 ═════════════════════════════════════════════
+   色は「明るく彩度のある側」で統一。濃藍の布の上で浮く。 */
+const TOWERS = {
+  ya:   { name:"矢倉", cost:50,  dmg:11, range:105, rate:.48,  speed:520, color:"#8fc66b",
+          desc:"単体を素早く射抜く基本の砦" },
+  hou:  { name:"焙烙", cost:110, dmg:34, range:95,  rate:1.25, speed:280, color:"#e09b30",
+          splash:48, desc:"着弾点で爆ぜ、まとめて削る" },
+  kori: { name:"氷室", cost:80,  dmg:6,  range:88,  rate:.75,  speed:420, color:"#4fbdd8",
+          slow:1.6, desc:"当てた敵の足を鈍らせる" },
+  teppo:{ name:"鉄砲", cost:150, dmg:70, range:180, rate:2.0,  speed:900, color:"#f2ece0",
+          pierce:true, desc:"遠くまで届き、守の盾を貫く" },
+  jin:  { name:"陣太鼓", cost:130, dmg:0, range:112, rate:0,   speed:0,   color:"#a684e0",
+          aura:true, desc:"攻撃せず、周りの砦を強くする" }
+};
+const upCost = (t) => Math.round(TOWERS[t.type].cost * 0.85 * Math.pow(1.7, t.level));
+const auraRange = (t) => TOWERS.jin.range + (t.level-1)*14;
+const auraDmg   = (t) => 1 + 0.22*t.level;
+const auraRate  = (t) => 1 - 0.06*t.level;
+
+function statsOf(t){
+  const s = TOWERS[t.type], k = Math.pow(1.55, t.level-1);
+  return {
+    dmg:   s.dmg * k * (t.buffD||1),
+    range: t.type === "jin" ? auraRange(t) : s.range + (t.level-1)*12,
+    rate:  s.rate * Math.pow(0.9, t.level-1) * (t.buffR||1)
+  };
+}
+function refreshAura(){
+  for (const t of G.towers){ t.buffD = 1; t.buffR = 1; }
+  for (const j of G.towers){
+    if (j.type !== "jin") continue;
+    const rr = auraRange(j), d = auraDmg(j), s = auraRate(j);
+    for (const t of G.towers){
+      if (t === j || t.type === "jin") continue;
+      if (Math.hypot(t.x-j.x, t.y-j.y) <= rr){ t.buffD = Math.max(t.buffD, d); t.buffR = Math.min(t.buffR, s); }
+    }
+  }
+}
+
+/* ══ 敵 ═════════════════════════════════════════════
+   色は「暗く沈んだ側」で統一。生成りの道の上で影のように読める。 */
+const ENEMIES = {
+  nuno:   { name:"布",   hp:58,   speed:56,  reward:9,   radius:10, color:"#3a5a86", shape:"circle",
+            note:"数で押してくる基本の敵" },
+  ito:    { name:"糸",   hp:38,   speed:110, reward:11,  radius:8,  color:"#a8531f", shape:"circle",
+            note:"小さく、とにかく速い" },
+  kame:   { name:"甕",   hp:250,  speed:34,  reward:24,  radius:14, color:"#2f6152", shape:"square",
+            resist:.15, note:"鈍いが硬く、鈍足も効きにくい" },
+  mamori: { name:"守",   hp:190,  speed:46,  reward:28,  radius:13, color:"#4b3a7d", shape:"hex",
+            shield:{on:2.2, off:3.2}, note:"周期的に盾を張り無敵。鉄砲だけが貫く" },
+  horo:   { name:"母衣", hp:230,  speed:48,  reward:22,  radius:15, color:"#8c3560", shape:"ring",
+            split:{type:"nuno", n:2}, note:"倒すと布2体に分かれる" },
+  kusushi:{ name:"薬売", hp:160,  speed:40,  reward:30,  radius:12, color:"#5c7016", shape:"cross",
+            heal:{amount:26, range:78}, note:"周りの敵を回復し続ける" },
+  oni:    { name:"藍鬼", hp:1600, speed:30,  reward:200, radius:21, color:"#93211f", shape:"oni",
+            resist:.3, note:"10ウェーブごとの大物。鈍足に強い" }
+};
+
+function buildWave(n){
+  const q = []; let t = 0;
+  const add = (type,count,gap) => { for(let i=0;i<count;i++){ q.push({type,t}); t+=gap; } t+=0.7; };
+  add("nuno", 5 + Math.floor(n*1.3), Math.max(0.30, 0.8 - n*0.022));
+  if (n>=3) add("ito", 2 + Math.floor(n*0.6), 0.45);
+  if (n>=5) add("kame", 1 + Math.floor(n/3), 0.95);
+  if (n>=6) add("mamori", 1 + Math.floor(n/4), 1.0);
+  if (n>=7 && (n%2===1 || n>=13)) add("horo", 1 + Math.floor(n/6), 1.1);
+  if (n>=8 && (n%3===0 || n>=14)) add("kusushi", 1 + Math.floor(n/8), 1.2);
+  if (n>=15) add("kame", 2 + Math.floor((n-14)/2), 0.8);   // 終盤の重装押し
+  if (n%10===0) add("oni", n>=20 ? 2 : 1, 2.0);
+  return q;
+}
+const MAX_WAVE = 20;
+
+/* ══ 状態 ═══════════════════════════════════════════ */
+let G;
+function reset(){
+  G = {
+    gold:300, intact:true, wave:0, phase:"idle",
+    enemies:[], towers:[], shots:[], bits:[], pending:[],
+    queue:[], qTime:0, spawned:0,
+    picked:null, selected:null, hover:null,
+    speed:1, running:false, t:0
+  };
+}
+reset();
+const canBuild = () => G.phase === "idle";
+
+/* ══ 補助 ═══════════════════════════════════════════ */
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove("show"), 1400);
+}
+function burst(x,y,color,n,pow){
+  for(let i=0;i<n;i++){
+    const a = Math.random()*Math.PI*2, s = (0.3+Math.random())*pow;
+    G.bits.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,r:1.5+Math.random()*2.5});
+  }
+}
+/* 前半は指数、ウェーブ10以降は二次曲線を上乗せして一気に伸ばす */
+function waveMul(){
+  const w = Math.max(G.wave, 1);
+  const late = Math.max(0, w - 9) / 11;
+  return Math.pow(1.145, w-1) * (1 + late*late*2.0);
+}
+
+/* ══ 敵の挙動 ═══════════════════════════════════════ */
+function makeEnemy(type, at){
+  const d = ENEMIES[type], mul = waveMul();
+  const e = {
+    type, x: at?at.x:PATH[0].x, y: at?at.y:PATH[0].y,
+    seg: at?at.seg:0, dist: at?at.dist:0,
+    hp:d.hp*mul, max:d.hp*mul, speed:d.speed*(1+(G.wave-1)*0.014),
+    slow:0, dead:false, leaked:false, hitFlash:0, healFlash:0,
+    shielded:false, st:0, blocked:0, spin:Math.random()*6
+  };
+  if (d.shield) e.st = d.shield.off * 0.6;
+  return e;
+}
+function stepEnemy(e, dt){
+  const d = ENEMIES[e.type];
+  if (e.slow>0) e.slow -= dt;
+  if (e.hitFlash>0) e.hitFlash -= dt;
+  if (e.healFlash>0) e.healFlash -= dt;
+  if (e.blocked>0) e.blocked -= dt;
+  if (d.shield){
+    e.st -= dt;
+    if (e.st <= 0){ e.shielded = !e.shielded; e.st = e.shielded ? d.shield.on : d.shield.off; }
+  }
+  e.spin += dt*2;
+  let move = e.speed * (e.slow>0 ? 0.45 + (d.resist||0) : 1) * dt;
+  while (move>0){
+    if (e.seg >= PATH.length-1){ e.leaked = true; return; }
+    const nx = PATH[e.seg+1];
+    const dx = nx.x-e.x, dy = nx.y-e.y, dd = Math.hypot(dx,dy);
+    if (dd <= move){ e.x=nx.x; e.y=nx.y; e.dist+=dd; move-=dd; e.seg++; }
+    else { e.x += dx/dd*move; e.y += dy/dd*move; e.dist += move; move = 0; }
+  }
+}
+function hurt(e, dmg, slowSec, pierce){
+  if (e.dead) return;
+  if (e.shielded && !pierce){ e.blocked = 0.18; return; }
+  e.hp -= dmg; e.hitFlash = 0.09;
+  if (slowSec) e.slow = Math.max(e.slow, slowSec);
+  if (e.hp <= 0){
+    e.dead = true;
+    const d = ENEMIES[e.type];
+    G.gold += Math.round(d.reward * (1 + (G.wave-1)*0.07));
+    burst(e.x, e.y, d.color, 14, 90);
+    if (d.split) for (let i=0;i<d.split.n;i++){
+      const child = makeEnemy(d.split.type, e);
+      child.x += (i - (d.split.n-1)/2) * 9;
+      G.pending.push(child);
+    }
+  }
+}
+
+/* ══ 砦の挙動 ═══════════════════════════════════════ */
+function stepTower(t, dt){
+  if (TOWERS[t.type].aura) return;
+  t.cd -= dt;
+  const st = statsOf(t), s = TOWERS[t.type];
+  let best = null;
+  for (const e of G.enemies){
+    if (e.dead) continue;
+    // 盾を貫けない砦は、盾持ちが他にいれば無視して別を狙う
+    if (e.shielded && !s.pierce) continue;
+    if (Math.hypot(e.x-t.x, e.y-t.y) <= st.range && (!best || e.dist > best.dist)) best = e;
+  }
+  if (!best){ // 全員が盾中なら仕方なく撃つ（弾は弾かれる）
+    for (const e of G.enemies){
+      if (e.dead) continue;
+      if (Math.hypot(e.x-t.x, e.y-t.y) <= st.range && (!best || e.dist > best.dist)) best = e;
+    }
+  }
+  if (best) t.angle = Math.atan2(best.y-t.y, best.x-t.x);
+  if (best && t.cd <= 0){
+    t.cd = st.rate; t.kick = 1;
+    G.shots.push({
+      x:t.x, y:t.y, target:best, speed:s.speed, dmg:st.dmg,
+      splash:s.splash||0, slow:s.slow||0, pierce:!!s.pierce,
+      color:s.color, type:t.type, life:2.5
+    });
+    burst(t.x+Math.cos(t.angle)*12, t.y+Math.sin(t.angle)*12, s.color, 3, 40);
+  }
+  if (t.kick>0) t.kick -= dt*5;
+}
+function stepShot(p, dt){
+  p.life -= dt;
+  const tx = p.target && !p.target.dead ? p.target.x : p.lx;
+  const ty = p.target && !p.target.dead ? p.target.y : p.ly;
+  if (tx === undefined){ p.life = 0; return; }
+  p.lx = tx; p.ly = ty;
+  const dx = tx-p.x, dy = ty-p.y, d = Math.hypot(dx,dy);
+  const step = p.speed*dt;
+  p.angle = Math.atan2(dy,dx);
+  if (d <= step || d < 6){
+    p.x = tx; p.y = ty; p.life = 0;
+    if (p.splash){
+      burst(p.x, p.y, p.color, 18, 150);
+      for (const e of G.enemies)
+        if (!e.dead && Math.hypot(e.x-p.x, e.y-p.y) <= p.splash) hurt(e, p.dmg, 0, p.pierce);
+    } else if (p.target && !p.target.dead){
+      hurt(p.target, p.dmg, p.slow, p.pierce);
+      burst(p.x, p.y, p.color, 4, 50);
+    }
+  } else { p.x += dx/d*step; p.y += dy/d*step; }
+}
+
+/* ══ ループ ═════════════════════════════════════════ */
+let last = 0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const raw = Math.min((now-last)/1000, 0.05); last = now;
+  if (G.running) for (let i=0;i<G.speed;i++) update(raw);
+  draw();
+}
+function update(dt){
+  G.t += dt;
+  if (G.phase === "fighting"){
+    G.qTime += dt;
+    while (G.spawned < G.queue.length && G.queue[G.spawned].t <= G.qTime){
+      G.enemies.push(makeEnemy(G.queue[G.spawned].type)); G.spawned++;
+    }
+  }
+  for (const t of G.towers) stepTower(t, dt);
+  for (const p of G.shots) stepShot(p, dt);
+  G.shots = G.shots.filter(p => p.life > 0);
+
+  // 薬売の回復
+  for (const h of G.enemies){
+    const hd = ENEMIES[h.type];
+    if (!hd.heal || h.dead) continue;
+    for (const e of G.enemies){
+      if (e === h || e.dead || e.hp >= e.max) continue;
+      if (Math.hypot(e.x-h.x, e.y-h.y) <= hd.heal.range){
+        e.hp = Math.min(e.max, e.hp + hd.heal.amount*dt); e.healFlash = 0.25;
+      }
+    }
+  }
+
+  for (const e of G.enemies){
+    stepEnemy(e, dt);
+    if (e.leaked && !e.dead){
+      e.dead = true;
+      if (G.intact){ G.intact = false; G.breachedBy = ENEMIES[e.type].name; }
+    }
+  }
+  G.enemies = G.enemies.filter(e => !e.dead);
+  if (G.pending.length){ G.enemies.push(...G.pending); G.pending.length = 0; }
+
+  for (const b of G.bits){ b.x += b.vx*dt; b.y += b.vy*dt; b.vx*=.93; b.vy*=.93; b.life -= dt*2.2; }
+  G.bits = G.bits.filter(b => b.life > 0);
+
+  if (!G.intact && G.phase !== "over"){
+    G.phase = "over"; G.running = false;
+    showVeil("落城", "「"+G.breachedBy+"」に城まで抜けられました。<br>到達ウェーブ "+G.wave+" / "+MAX_WAVE, "もう一度", true);
+  } else if (G.phase === "fighting" && G.spawned >= G.queue.length && G.enemies.length === 0){
+    const bonus = 40 + G.wave*12;
+    G.gold += bonus;
+    if (G.wave >= MAX_WAVE){
+      G.phase = "win"; G.running = false;
+      showVeil("藍、守り抜く", "全 "+MAX_WAVE+" ウェーブを無傷で凌ぎました。", "もう一度");
+    } else {
+      G.phase = "idle";
+      toast("ウェーブ突破　藍銭 +"+bonus+"　普請できます");
+    }
+  }
+  sync();
+}
+
+/* ══ 描画 ═══════════════════════════════════════════ */
+function draw(){
+  ctx.fillStyle = "#12233d"; ctx.fillRect(0,0,cv.width,cv.height);
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    if (isPath(c,r)) continue;
+    const n = weave[r*COLS+c];
+    ctx.fillStyle = `rgba(27,58,99,${0.45 + n*0.4})`;
+    ctx.fillRect(c*T, r*T, T, T);
+    if (n > 0.88){
+      ctx.fillStyle = "rgba(233,223,199,.07)";
+      ctx.beginPath(); ctx.arc(c*T+T*0.3+n*12, r*T+T*0.3+n*14, 3+n*4, 0, 7); ctx.fill();
+    }
+  }
+  ctx.strokeStyle = "rgba(11,21,36,.35)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let c=1;c<COLS;c++){ ctx.moveTo(c*T+.5,0); ctx.lineTo(c*T+.5,cv.height); }
+  for (let r=1;r<ROWS;r++){ ctx.moveTo(0,r*T+.5); ctx.lineTo(cv.width,r*T+.5); }
+  ctx.stroke();
+
+  // 石畳（建設可能マス）
+  for (const key of plots){
+    const [c,r] = key.split(",").map(Number);
+    const x = c*T, y = r*T;
+    ctx.fillStyle = "rgba(233,223,199,.075)";
+    ctx.fillRect(x+3, y+3, T-6, T-6);
+    ctx.strokeStyle = "rgba(233,223,199,.2)"; ctx.lineWidth = 1;
+    const m = 7;
+    ctx.beginPath();
+    ctx.moveTo(x+3,y+m); ctx.lineTo(x+3,y+3); ctx.lineTo(x+m,y+3);
+    ctx.moveTo(x+T-m,y+3); ctx.lineTo(x+T-3,y+3); ctx.lineTo(x+T-3,y+m);
+    ctx.moveTo(x+T-3,y+T-m); ctx.lineTo(x+T-3,y+T-3); ctx.lineTo(x+T-m,y+T-3);
+    ctx.moveTo(x+m,y+T-3); ctx.lineTo(x+3,y+T-3); ctx.lineTo(x+3,y+T-m);
+    ctx.stroke();
+  }
+
+  // 生成りの道
+  ctx.strokeStyle = "#e9dfc7"; ctx.lineWidth = T-7; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(PATH[0].x, PATH[0].y);
+  for (let i=1;i<PATH.length;i++) ctx.lineTo(PATH[i].x, PATH[i].y);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(180,166,134,.5)"; ctx.lineWidth = T-19; ctx.stroke();
+  ctx.strokeStyle = "#efe7d3"; ctx.lineWidth = T-27; ctx.stroke();
+
+  const lastP = PATH[PATH.length-2];
+  ctx.fillStyle = "#c4453c";
+  ctx.fillRect(0, PATH[1].y-T/2+4, 6, T-8);
+  ctx.save();
+  ctx.translate(cv.width-16, lastP.y);
+  ctx.fillStyle = "#d9a441";
+  ctx.beginPath(); ctx.moveTo(-12,-20); ctx.lineTo(12,-12); ctx.lineTo(12,20); ctx.lineTo(-12,20); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#12233d"; ctx.font = "13px 'Hiragino Mincho ProN',serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("城", 0, 4);
+  ctx.restore();
+
+  // 陣太鼓の効果範囲（常時うっすら）
+  for (const t of G.towers){
+    if (t.type !== "jin") continue;
+    ctx.beginPath(); ctx.arc(t.x, t.y, auraRange(t), 0, 7);
+    ctx.strokeStyle = "rgba(166,132,224,.28)"; ctx.lineWidth = 1; ctx.setLineDash([3,6]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // 設置プレビュー
+  if (G.hover && G.picked && canBuild()){
+    const {c,r} = G.hover, s = TOWERS[G.picked];
+    const ok = canPlace(c,r) && G.gold >= s.cost;
+    ctx.fillStyle = ok ? "rgba(116,182,198,.22)" : "rgba(196,69,60,.25)";
+    ctx.fillRect(c*T, r*T, T, T);
+    ctx.strokeStyle = ok ? "#74b6c6" : "#c4453c"; ctx.lineWidth = 2;
+    ctx.strokeRect(c*T+1, r*T+1, T-2, T-2);
+    if (ok) ring((c+.5)*T, (r+.5)*T, s.aura ? TOWERS.jin.range : s.range, "rgba(116,182,198,.5)", "rgba(116,182,198,.07)");
+  }
+  if (G.selected) ring(G.selected.x, G.selected.y, statsOf(G.selected).range, "rgba(217,164,65,.6)", "rgba(217,164,65,.08)");
+
+  G.towers.forEach(drawTower);
+  G.enemies.forEach(drawEnemy);
+  G.shots.forEach(drawShot);
+  for (const b of G.bits){
+    ctx.globalAlpha = Math.max(b.life,0);
+    ctx.fillStyle = b.color;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r*b.life, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+function ring(x,y,r,stroke,fill){
+  ctx.beginPath(); ctx.arc(x,y,r,0,7);
+  ctx.fillStyle = fill; ctx.fill();
+  ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+}
+function poly(n, rad, rot){
+  ctx.beginPath();
+  for (let i=0;i<n;i++){ const a = rot + i/n*Math.PI*2; ctx[i?"lineTo":"moveTo"](Math.cos(a)*rad, Math.sin(a)*rad); }
+  ctx.closePath();
+}
+function drawTower(t){
+  const s = TOWERS[t.type], k = t.kick>0 ? t.kick*3 : 0;
+  ctx.save(); ctx.translate(t.x, t.y);
+  ctx.fillStyle = "#0b1524";
+  ctx.beginPath(); ctx.roundRect(-15,-15,30,30,5); ctx.fill();
+  ctx.strokeStyle = t === G.selected ? "#d9a441" : "rgba(233,223,199,.28)";
+  ctx.lineWidth = t === G.selected ? 2 : 1; ctx.stroke();
+  if (t.buffD > 1){ // 陣太鼓の加護
+    ctx.strokeStyle = "rgba(166,132,224,.8)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(-17,-17,34,34,6); ctx.stroke();
+  }
+  ctx.save(); ctx.rotate(t.angle||0); ctx.translate(-k,0);
+  ctx.fillStyle = s.color;
+  if (t.type === "ya"){ ctx.fillRect(0,-2.5,19,5); ctx.beginPath(); ctx.arc(0,0,7,0,7); ctx.fill(); }
+  else if (t.type === "hou"){ ctx.fillRect(0,-5,16,10); ctx.beginPath(); ctx.arc(0,0,9,0,7); ctx.fill(); }
+  else if (t.type === "kori"){ poly(6,9,0); ctx.fill(); ctx.fillRect(0,-2,14,4); }
+  else if (t.type === "teppo"){ ctx.fillRect(0,-2,25,4); ctx.beginPath(); ctx.roundRect(-8,-6,14,12,3); ctx.fill(); }
+  ctx.restore();
+  if (t.type === "jin"){
+    const pulse = 1 + Math.sin(G.t*3)*0.06;
+    ctx.fillStyle = s.color;
+    ctx.beginPath(); ctx.ellipse(0,0,11*pulse,9*pulse,0,0,7); ctx.fill();
+    ctx.fillStyle = "#0b1524";
+    ctx.beginPath(); ctx.ellipse(0,0,7*pulse,5.5*pulse,0,0,7); ctx.fill();
+    ctx.fillStyle = s.color; ctx.fillRect(-14,-2,4,4); ctx.fillRect(10,-2,4,4);
+  }
+  for (let i=0;i<t.level;i++){
+    ctx.fillStyle = "#d9a441";
+    ctx.beginPath(); ctx.arc(-11+i*7.5, 11, 2, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawEnemy(e){
+  const d = ENEMIES[e.type];
+  ctx.save(); ctx.translate(e.x, e.y);
+  if (e.slow > 0){
+    ctx.strokeStyle = "rgba(79,189,216,.9)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,d.radius+4,0,7); ctx.stroke();
+  }
+  if (e.healFlash > 0){
+    ctx.strokeStyle = "rgba(143,198,107,.8)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0,0,d.radius+7,0,7); ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(11,21,36,.25)";
+  ctx.beginPath(); ctx.ellipse(1, d.radius*0.7, d.radius*0.9, d.radius*0.35, 0, 0, 7); ctx.fill();
+
+  ctx.fillStyle = e.hitFlash > 0 ? "#fff" : d.color;
+  ctx.strokeStyle = "rgba(240,236,224,.35)"; ctx.lineWidth = 1.5;
+  const R = d.radius;
+  if (d.shape === "square"){ ctx.beginPath(); ctx.roundRect(-R,-R,R*2,R*2,5); ctx.fill(); ctx.stroke(); }
+  else if (d.shape === "hex"){ poly(6,R,e.spin*0.3); ctx.fill(); ctx.stroke(); }
+  else if (d.shape === "ring"){
+    ctx.beginPath(); ctx.arc(0,0,R,0,7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(240,236,224,.55)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,R*0.5,0,7); ctx.stroke();
+  }
+  else if (d.shape === "cross"){
+    ctx.beginPath(); ctx.arc(0,0,R,0,7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(240,236,224,.85)"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-R*0.55,0); ctx.lineTo(R*0.55,0); ctx.moveTo(0,-R*0.55); ctx.lineTo(0,R*0.55); ctx.stroke();
+  }
+  else if (d.shape === "oni"){
+    ctx.beginPath(); ctx.arc(0,0,R,0,7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = e.hitFlash > 0 ? "#fff" : d.color;
+    ctx.beginPath(); ctx.moveTo(-R*0.6,-R*0.75); ctx.lineTo(-R*0.35,-R*1.5); ctx.lineTo(-R*0.1,-R*0.85); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(R*0.6,-R*0.75); ctx.lineTo(R*0.35,-R*1.5); ctx.lineTo(R*0.1,-R*0.85); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#e9dfc7";
+    ctx.beginPath(); ctx.arc(-R*0.35,-R*0.1,2.5,0,7); ctx.arc(R*0.35,-R*0.1,2.5,0,7); ctx.fill();
+  }
+  else { ctx.beginPath(); ctx.arc(0,0,R,0,7); ctx.fill(); ctx.stroke(); }
+
+  // 守の盾
+  if (e.shielded){
+    ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5;
+    poly(6, R+6, -e.spin*0.6); ctx.stroke();
+    ctx.fillStyle = "rgba(207,232,255,.16)"; ctx.fill();
+  }
+  if (e.blocked > 0){
+    ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,R+9+(0.18-e.blocked)*40,0,7); ctx.stroke();
+  }
+
+  const w = R*2.2, p = Math.max(e.hp,0)/e.max;
+  ctx.fillStyle = "rgba(11,21,36,.75)"; ctx.fillRect(-w/2, -R-9, w, 3.5);
+  ctx.fillStyle = p > .5 ? "#8fc66b" : p > .22 ? "#d9a441" : "#c4453c";
+  ctx.fillRect(-w/2, -R-9, w*p, 3.5);
+  ctx.restore();
+}
+function drawShot(p){
+  ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.angle||0);
+  ctx.fillStyle = p.color;
+  if (p.type === "ya"){ ctx.fillRect(-7,-1.2,14,2.4); }
+  else if (p.type === "hou"){ ctx.beginPath(); ctx.arc(0,0,4.5,0,7); ctx.fill(); }
+  else if (p.type === "teppo"){ ctx.fillRect(-13,-1.5,26,3); }
+  else { ctx.beginPath(); ctx.moveTo(5,0); ctx.lineTo(0,3.5); ctx.lineTo(-5,0); ctx.lineTo(0,-3.5); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
+
+/* ══ 操作 ═══════════════════════════════════════════ */
+function canPlace(c,r){
+  if (!plots.has(c+","+r)) return false;
+  return !G.towers.some(t => t.c===c && t.r===r);
+}
+function tileFrom(ev){
+  const b = cv.getBoundingClientRect();
+  const x = (ev.clientX-b.left) * (cv.width/b.width);
+  const y = (ev.clientY-b.top) * (cv.height/b.height);
+  return { c:Math.floor(x/T), r:Math.floor(y/T) };
+}
+cv.addEventListener("mousemove", ev => { G.hover = tileFrom(ev); });
+cv.addEventListener("mouseleave", () => { G.hover = null; });
+cv.addEventListener("click", ev => {
+  if (G.phase === "over" || G.phase === "win") return;
+  const {c,r} = tileFrom(ev);
+  const hit = G.towers.find(t => t.c===c && t.r===r);
+  if (hit && !G.picked){ G.selected = hit; sync(); return; }   // 交戦中でも確認だけはできる
+  if (!G.picked){ G.selected = null; sync(); return; }
+  if (!canBuild()){ toast("交戦中は普請できません"); return; }
+  const s = TOWERS[G.picked];
+  if (!canPlace(c,r)){ toast("石畳のマスにだけ建てられます"); return; }
+  if (G.gold < s.cost){ toast("藍銭が足りません"); return; }
+  G.gold -= s.cost;
+  const t = { type:G.picked, c, r, x:(c+.5)*T, y:(r+.5)*T, level:1, cd:0, angle:-Math.PI/2, kick:0, spent:s.cost, buffD:1, buffR:1 };
+  G.towers.push(t);
+  refreshAura();
+  G.selected = t;
+  burst(t.x, t.y, s.color, 10, 70);
+  if (G.gold < s.cost) G.picked = null;
+  sync();
+});
+
+function pick(type){
+  if (!canBuild()){ toast("交戦中は普請できません"); return; }
+  G.picked = G.picked === type ? null : type;
+  if (G.picked) G.selected = null;
+  sync();
+}
+function upgrade(){
+  const t = G.selected;
+  if (!t || t.level >= 4 || !canBuild()) return;
+  const c = upCost(t);
+  if (G.gold < c){ toast("藍銭が足りません"); return; }
+  G.gold -= c; t.spent += c; t.level++;
+  refreshAura();
+  burst(t.x, t.y, "#d9a441", 12, 80);
+  sync();
+}
+function sell(){
+  const t = G.selected;
+  if (!t || !canBuild()) return;
+  const back = Math.floor(t.spent*0.6);
+  G.gold += back;
+  G.towers = G.towers.filter(x => x !== t);
+  refreshAura();
+  G.selected = null;
+  toast("砦を畳みました　藍銭 +"+back);
+  sync();
+}
+function startWave(){
+  if (G.phase !== "idle") return;
+  G.wave++;
+  G.queue = buildWave(G.wave); G.qTime = 0; G.spawned = 0;
+  G.phase = "fighting"; G.running = true; G.picked = null;
+  if (G.wave % 10 === 0) toast("藍鬼が来る");
+  sync();
+}
+function toggleSpeed(){
+  G.speed = G.speed === 1 ? 2 : G.speed === 2 ? 3 : 1;
+  document.getElementById("btn-speed").textContent = "×"+G.speed;
+}
+
+/* ══ UI ═════════════════════════════════════════════ */
+const shopEl = document.getElementById("shop");
+const KEYS = Object.keys(TOWERS);
+KEYS.forEach((key,i) => {
+  const s = TOWERS[key];
+  const b = document.createElement("button");
+  b.className = "tower-btn"; b.dataset.type = key; b.type = "button";
+  b.innerHTML = `<span class="glyph" style="background:${s.color}">${s.name[0]}</span>
+    <span><span class="nm">${s.name}</span><span class="desc">${s.desc}</span></span>
+    <span class="cost">${s.cost}</span>`;
+  b.addEventListener("click", () => pick(key));
+  shopEl.appendChild(b);
+});
+
+const bestEl = document.getElementById("bestiary");
+bestEl.innerHTML = Object.values(ENEMIES).map(d =>
+  `<li><span class="sw" style="background:${d.color}"></span><span class="en">${d.name}</span><span class="no">${d.note}</span></li>`
+).join("");
+
+const detailEl = document.getElementById("detail");
+let panelSig = "";
+function sync(){
+  document.getElementById("rd-wave").textContent = G.wave + " / " + MAX_WAVE;
+  document.getElementById("rd-gold").textContent = G.gold;
+  document.getElementById("rd-life").textContent = G.intact ? "無傷" : "落城";
+  document.getElementById("rd-enemy").textContent = G.enemies.length;
+
+  const build = canBuild();
+  document.getElementById("lock-shop").hidden = build;
+  shopEl.querySelectorAll(".tower-btn").forEach(b => {
+    const s = TOWERS[b.dataset.type];
+    b.setAttribute("aria-pressed", G.picked === b.dataset.type);
+    b.disabled = !build || G.gold < s.cost;
+  });
+
+  const wb = document.getElementById("btn-wave");
+  wb.disabled = !build;
+  wb.textContent = G.phase === "fighting" ? "交戦中…" : (G.wave === 0 ? "ウェーブ開始" : "次のウェーブへ");
+
+  // パネルは内容が変わったときだけ描き直す（毎フレーム作り直すとボタンが押せない）
+  const t = G.selected;
+  const c = t ? upCost(t) : 0;
+  const sig = t ? [t.type,t.c,t.r,t.level,t.spent,t.buffD,G.gold>=c,build].join("|") : "none|"+build;
+  if (sig === panelSig) return;
+  panelSig = sig;
+
+  if (!t){
+    detailEl.innerHTML = `<p class="empty">砦をクリックすると、性能の確認・強化・撤去ができます。</p>`;
+    return;
+  }
+  const s = statsOf(t), base = TOWERS[t.type], max = t.level >= 4;
+  const rows = base.aura
+    ? `<div class="row"><span>攻撃力</span><span>×${auraDmg(t).toFixed(2)}</span></div>
+       <div class="row"><span>連射</span><span>×${(1/auraRate(t)).toFixed(2)}</span></div>
+       <div class="row"><span>効果範囲</span><span>${auraRange(t).toFixed(0)}</span></div>`
+    : `<div class="row"><span>攻撃力</span><span>${s.dmg.toFixed(0)}${t.buffD>1?" ↑":""}</span></div>
+       <div class="row"><span>射程</span><span>${s.range.toFixed(0)}</span></div>
+       <div class="row"><span>毎秒火力</span><span>${(s.dmg/s.rate).toFixed(1)}</span></div>
+       ${base.splash?`<div class="row"><span>爆風</span><span>${base.splash}</span></div>`:""}
+       ${base.slow?`<div class="row"><span>鈍足</span><span>${base.slow}秒</span></div>`:""}
+       ${base.pierce?`<div class="row"><span>貫通</span><span>盾を無視</span></div>`:""}`;
+  detailEl.innerHTML = `
+    <div class="row"><span>${base.name}</span><span>段位 ${t.level}${max?"（極）":""}</span></div>
+    ${rows}
+    <div class="detail-actions">
+      <button class="act" id="btn-up" ${max||!build||G.gold<c?"disabled":""}>${max?"最大":"強化 "+c}</button>
+      <button class="act sell" id="btn-sell" ${build?"":"disabled"}>撤去 +${Math.floor(t.spent*0.6)}</button>
+    </div>
+    ${build?"":`<p class="empty" style="margin:8px 0 0">交戦中は普請できません。</p>`}`;
+  document.getElementById("btn-up").addEventListener("click", upgrade);
+  document.getElementById("btn-sell").addEventListener("click", sell);
+}
+
+document.getElementById("btn-wave").addEventListener("click", startWave);
+document.getElementById("btn-speed").addEventListener("click", toggleSpeed);
+
+addEventListener("keydown", ev => {
+  if (ev.target.tagName === "BUTTON" && ev.key === " ") return;
+  const idx = "12345".indexOf(ev.key);
+  if (idx >= 0 && idx < KEYS.length){ pick(KEYS[idx]); }
+  else if (ev.key === "Escape"){ G.picked = null; G.selected = null; sync(); }
+  else if (ev.key === " "){ ev.preventDefault(); startWave(); }
+  else if (ev.key.toLowerCase() === "f"){ toggleSpeed(); }
+});
+
+/* ══ オーバーレイ ═══════════════════════════════════ */
+const veil = document.getElementById("veil");
+function showVeil(title, text, btn, seal){
+  document.getElementById("veil-title").textContent = title;
+  document.getElementById("veil-text").innerHTML = (seal ? `<span class="seal">封</span>` : "") + text;
+  document.getElementById("veil-btn").textContent = btn;
+  veil.hidden = false;
+}
+document.getElementById("veil-btn").addEventListener("click", () => {
+  veil.hidden = true;
+  const restart = G.phase === "over" || G.phase === "win";
+  reset();
+  G.running = true;
+  panelSig = "";
+  sync();
+  if (restart) toast("再挑戦");
+});
+
+sync();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
