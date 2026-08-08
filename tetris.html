@@ -298,15 +298,21 @@
 
   function merge() {
     const { matrix, x: offX, y: offY, type } = current;
+    let overflow = false;
     for (let y = 0; y < matrix.length; y++) {
       for (let x = 0; x < matrix[y].length; x++) {
         if (matrix[y][x]) {
           const boardY = y + offY;
           const boardX = x + offX;
-          if (boardY >= 0) board[boardY][boardX] = type;
+          if (boardY >= 0) {
+            board[boardY][boardX] = type;
+          } else {
+            overflow = true;
+          }
         }
       }
     }
+    return overflow;
   }
 
   function clearLines() {
@@ -359,7 +365,11 @@
   }
 
   function lockPiece() {
-    merge();
+    const overflow = merge();
+    if (overflow) {
+      endGame();
+      return;
+    }
     clearLines();
     spawnNext();
     dropTimer = 0;
