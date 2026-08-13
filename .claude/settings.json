@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"C:\\\\Users\\\\yusuk\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-yusuk-Documents-GitHubPagesSample\\\\b7dba6ca-5992-4e6c-a83c-6700ce1d0f72\\\\scratchpad\\\\verify_header.ps1\")"
+    ]
+  }
+}
