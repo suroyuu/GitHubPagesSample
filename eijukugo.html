@@ -382,7 +382,18 @@
     .meta-line span b{ color:#000; }
     .name-date{ color:#000; }
     .name-date .box{ border-bottom-color:#000; }
-    .cards{ grid-template-columns:repeat(5,1fr); gap:6px 8px; }
+    .page{
+      display:flex;
+      flex-direction:column;
+      min-height:277mm;
+    }
+    .cards{
+      grid-template-columns:repeat(4,1fr);
+      grid-auto-rows:1fr;
+      gap:8px 10px;
+      flex:1 1 auto;
+      min-height:0;
+    }
     .card{ break-inside:avoid; border-color:#000; min-height:48px; }
     .card .ring{ width:10px; border-right:none; background:none; }
     .card .ring::before, .card .ring::after{ display:none; }
@@ -721,16 +732,8 @@ function modeLabel(mode){
   return mode==='e2j' ? '英語 → 日本語（意味を答える）' : '日本語 → 英語（熟語を答える）';
 }
 
-function renderWorksheet(mode, start, end){
-  const area = $('worksheetArea');
-  if(currentQuiz.length===0){
-    area.innerHTML = '<div class="empty"><span class="big">まだ問題がありません</span></div>';
-    return;
-  }
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
-
-  const cardsHtml = currentQuiz.map(item=>{
+function cardsMarkup(quiz, answersVisible){
+  return quiz.map(item=>{
     const qFit = fitFontSize(item.q, 9, 7, 3);
     const aFit = fitFontSize(item.a, 10, 7.5, 3);
     return `
@@ -741,22 +744,35 @@ function renderWorksheet(mode, start, end){
           <div class="qno">No.${item.idx} <span style="opacity:.6">(収録${item.no})</span></div>
           <div class="q" style="--fit-size:${qFit}px">${formatCardText(item.q)}</div>
         </div>
-        <div class="a ${showAnswers ? '' : 'blank'}" style="--fit-size:${aFit}px">${formatCardText(item.a)}</div>
+        <div class="a ${answersVisible ? '' : 'blank'}" style="--fit-size:${aFit}px">${formatCardText(item.a)}</div>
       </div>
     </div>
   `;
   }).join('');
+}
+
+function renderWorksheet(mode, start, end){
+  const area = $('worksheetArea');
+  if(currentQuiz.length===0){
+    area.innerHTML = '<div class="empty"><span class="big">まだ問題がありません</span></div>';
+    return;
+  }
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  const cardsHtml = cardsMarkup(currentQuiz, showAnswers);
 
   area.innerHTML = `
-    <div class="worksheet-head">熟語テスト（収録番号 ${start}〜${end}）</div>
-    <div class="worksheet-sub">${modeLabel(mode)} ／ 全${currentQuiz.length}問</div>
-    <div class="meta-line">
-      <span>出題数：<b>${currentQuiz.length}問</b></span>
-      <span>作成日：<b>${dateStr}</b></span>
-      <span class="name-date">名前<span class="box"></span></span>
-      <span class="name-date">点数<span class="box"></span></span>
+    <div class="page">
+      <div class="worksheet-head">熟語テスト（収録番号 ${start}〜${end}）</div>
+      <div class="worksheet-sub">${modeLabel(mode)} ／ 全${currentQuiz.length}問</div>
+      <div class="meta-line">
+        <span>出題数：<b>${currentQuiz.length}問</b></span>
+        <span>作成日：<b>${dateStr}</b></span>
+        <span class="name-date">名前<span class="box"></span></span>
+        <span class="name-date">点数<span class="box"></span></span>
+      </div>
+      <div class="cards">${cardsHtml}</div>
     </div>
-    <div class="cards">${cardsHtml}</div>
   `;
 }
 
@@ -784,7 +800,7 @@ function formatCardText(s){
 
 // 印刷時のカード内テキスト幅（px目安）に収まるようフォントサイズを逆算する。
 // 丸数字で改行される場合は、一番長い語義（1行分）が収まる大きさを基準にする。
-const PRINT_CARD_TEXT_PX = 112;
+const PRINT_CARD_TEXT_PX = 140;
 function fitFontSize(text, basePx, minPx, maxLines){
   const segments = splitByCircledNumbers(text);
   const size = segments.length > 1
@@ -809,20 +825,27 @@ $('printBtn').addEventListener('click', ()=>{
   const start = parseInt($('rangeStart').value,10);
   const end = parseInt($('rangeEnd').value,10);
   const originalShow = showAnswers;
-
-  showAnswers = originalShow;
-  renderWorksheet(mode, start, end);
-  const questionsHtml = $('worksheetArea').innerHTML;
-
-  showAnswers = true;
-  renderWorksheet(mode, start, end);
-  const answersHtml = $('worksheetArea').innerHTML;
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
 
   const area = $('worksheetArea');
-  area.innerHTML = questionsHtml + `<div class="answers-page">
-      <div class="worksheet-head" style="margin-top:20px;">解答一覧（収録番号 ${start}〜${end}）</div>
-      ${answersHtml.substring(answersHtml.indexOf('<div class="cards">'))}
-    </div>`;
+  area.innerHTML = `
+    <div class="page">
+      <div class="worksheet-head">熟語テスト（収録番号 ${start}〜${end}）</div>
+      <div class="worksheet-sub">${modeLabel(mode)} ／ 全${currentQuiz.length}問</div>
+      <div class="meta-line">
+        <span>出題数：<b>${currentQuiz.length}問</b></span>
+        <span>作成日：<b>${dateStr}</b></span>
+        <span class="name-date">名前<span class="box"></span></span>
+        <span class="name-date">点数<span class="box"></span></span>
+      </div>
+      <div class="cards">${cardsMarkup(currentQuiz, false)}</div>
+    </div>
+    <div class="page answers-page">
+      <div class="worksheet-head">解答一覧（収録番号 ${start}〜${end}）</div>
+      <div class="cards">${cardsMarkup(currentQuiz, true)}</div>
+    </div>
+  `;
 
   window.print();
 
