@@ -462,6 +462,14 @@
         </div>
       </div>
 
+      <div class="field">
+        <div class="btn-row">
+          <button class="btn btn-ghost" type="button" id="rangePrevBtn">◀ 前の50問</button>
+          <button class="btn btn-ghost" type="button" id="rangeNextBtn">次の50問 ▶</button>
+        </div>
+        <div class="hint">開始番号・終了番号をまとめて50ずつずらします（1〜50 → 51〜100 → 101〜150 …）。</div>
+      </div>
+
       <fieldset class="field">
         <label>出題モード</label>
         <div class="choice">
@@ -680,6 +688,21 @@ function shuffle(arr){
   }
   return a;
 }
+
+function shiftRange(delta){
+  const sEl = $('rangeStart'), eEl = $('rangeEnd');
+  let start = parseInt(sEl.value,10);
+  let end = parseInt(eEl.value,10);
+  if(isNaN(start) || start < 1) start = 1;
+  if(isNaN(end) || end < start) end = start + 49;
+  const span = end - start;
+  let newStart = start + delta;
+  if(newStart < 1) newStart = 1;
+  sEl.value = newStart;
+  eEl.value = newStart + span;
+}
+$('rangePrevBtn').addEventListener('click', ()=> shiftRange(-50));
+$('rangeNextBtn').addEventListener('click', ()=> shiftRange(50));
 
 $('generateBtn').addEventListener('click', ()=>{
   if(wordBank.length===0){
