@@ -3,7 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@500;700;800&family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
+<link rel="stylesheet" id="fontcss" media="print" href="https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@500;700;800&family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <style>
 /* Layout: 16:9 arcade screen in a navy cabinet bezel, one control pad per player under it. Single committed dark look. */
 :root{
@@ -75,7 +75,12 @@ const KLABEL=code=>({Comma:',',Period:'.',Slash:'/',Minus:'-',Equal:'^',BracketL
 const keysOf=p=>(LAYOUT[G.nh][p]||[]).map(KLABEL).join(' ');
 function resize(){const d=Math.min(2,window.devicePixelRatio||1);cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
 resize();
-try{for(const f of ['500 20px "M PLUS 1"','700 20px "M PLUS 1"','800 20px "M PLUS 1"','italic 700 20px "Barlow Condensed"'])document.fonts.load(f);}catch(e){}
+/* フォントCSSは media="print" で読み込み、スクリプトの実行を待たせない。
+   届いたらここで有効化する。届かなくても代替フォントでゲームは動く。 */
+function useFonts(){try{for(const f of ['500 20px "M PLUS 1"','700 20px "M PLUS 1"','800 20px "M PLUS 1"','italic 700 20px "Barlow Condensed"'])document.fonts.load(f).catch(()=>{});}catch(e){}}
+(()=>{const el=document.getElementById('fontcss');if(!el){useFonts();return;}
+ const on=()=>{if(el.media!=='all'){el.media='all';useFonts();}};
+ if(el.sheet)on();else{el.addEventListener('load',on,{once:true});el.addEventListener('error',()=>{},{once:true});setTimeout(on,4000);}})();
 
 /* ---------- 選手と種目 ---------- */
 const ATH=[
@@ -1028,9 +1033,21 @@ function draw(){
  else if(s==='result')drawResult();else if(s==='standings')drawStandings();else if(s==='final')drawFinal();
  ctx.restore();
 }
-let last=performance.now();
-function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop);}
-requestAnimationFrame(loop);
+/* ループは何があっても止めない。次フレームを先に予約してから更新・描画し、
+   例外が出てもループ自体は生き残る。万一止まった場合は見張りタイマーで再開する。 */
+let last=performance.now(),alive=last,raf=0;
+function loop(now){
+ alive=performance.now();
+ let dt=(now-last)/1000;last=now;
+ if(!isFinite(dt)||dt<0)dt=0;
+ raf=requestAnimationFrame(loop);
+ try{update(Math.min(.05,dt));draw();}catch(e){console.error('velocitas:',e);}
+}
+function kick(){if(raf)cancelAnimationFrame(raf);last=alive=performance.now();raf=requestAnimationFrame(loop);}
+kick();
+setInterval(()=>{if(document.visibilityState!=='hidden'&&performance.now()-alive>1000)kick();},1000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='hidden')kick();});
+window.addEventListener('pageshow',kick);
 
 /* ---------- 入力 ---------- */
 /* 1人ならスペース・Enter・矢印も P1。複数人ではメニュー操作だけに使い、競技中は無効 */
@@ -1043,7 +1060,7 @@ function keyFor(code){
 window.addEventListener('keydown',e=>{const m=keyFor(e.code);if(!m)return;e.preventDefault();if(e.repeat)return;press(m[0],m[1]);});
 const padPrev=[];
 function pollPads(){let ps;try{ps=navigator.getGamepads?navigator.getGamepads():[];}catch(e){return;}let k=0;
- for(const gp of ps){if(!gp)continue;const p=k++;if(p>3)break;const btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);const st=[btn(0),btn(1),btn(2)||btn(3)],pr=padPrev[p]||[];
+ for(const gp of ps){if(!gp)continue;const p=k++;if(p>3)break;const bs=gp.buttons||[],btn=i=>!!(bs[i]&&bs[i].pressed);const st=[btn(0),btn(1),btn(2)||btn(3)],pr=padPrev[p]||[];
   ['A','B','C'].forEach((b,i)=>{if(st[i]&&!pr[i])press(p,b);});padPrev[p]=st;}}
 const padEl=document.getElementById('pad');let btns={};
 function buildPad(){
