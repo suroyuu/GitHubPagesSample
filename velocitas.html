@@ -125,6 +125,24 @@ const PTS=[10,6,3,1];
 let REC={};
 try{REC=JSON.parse(localStorage.getItem('velocitas-rec')||'{}')||{};}catch(e){REC={};}
 function saveRec(){try{localStorage.setItem('velocitas-rec',JSON.stringify(REC));}catch(e){}}
+
+/* ---------- 歴代記録（種目ごとのベスト10） ----------
+   localStorage に保存するのでブラウザを閉じても残る。
+   記録されるのは人間プレイヤーの有効な記録だけ（CPU と 失格/ファウルは対象外）。 */
+let HOF={};
+try{HOF=JSON.parse(localStorage.getItem('velocitas-hof')||'{}')||{};}catch(e){HOF={};}
+function saveHof(){try{localStorage.setItem('velocitas-hof',JSON.stringify(HOF));}catch(e){}}
+const hofOf=key=>Array.isArray(HOF[key])?HOF[key]:[];
+/* 登録して入った順位を返す。ベスト10 圏外なら 0 */
+function hofAdd(key,val,athIdx,when){
+ const low=EV[key].better==='low',ent={v:val,a:ATH[athIdx].name,d:when};
+ const list=hofOf(key).concat([ent]);
+ list.sort((x,y)=>low?x.v-y.v:y.v-x.v);   /* 同記録なら先に出した方が上位（sort は安定） */
+ const kept=list.slice(0,10);HOF[key]=kept;
+ const i=kept.indexOf(ent);return i<0?0:i+1;
+}
+function fmtDate(ms){if(!ms)return '—';const t=new Date(ms),z=n=>('0'+n).slice(-2);
+ return t.getFullYear()+'/'+z(t.getMonth()+1)+'/'+z(t.getDate())+' '+z(t.getHours())+':'+z(t.getMinutes());}
 function fmt(key,v,dnf){
  if(dnf)return (key==='longjump'||key==='hammer')?'ファウル':(key==='sky'||key==='pole')?'失敗':'記録なし';
  if(['dash','hurdle','swim','tire','hand'].includes(key))return v.toFixed(2)+'秒';
@@ -224,7 +242,7 @@ const P={
 };
 
 /* ---------- 状態 ---------- */
-const G={scene:'title',t:0,st:0,nh:1,mode:0,row:0,chooser:0,sel:0,picks:[],comps:[],evs:[],ev:0,totals:[0,0,0,0],cur:null,res:null,shake:0,confetti:[]};
+const G={scene:'title',t:0,st:0,nh:1,mode:0,row:0,chooser:0,sel:0,picks:[],comps:[],evs:[],ev:0,totals:[0,0,0,0],cur:null,res:null,shake:0,confetti:[],hofEv:0,hofBack:'title'};
 const lastMash=[null,null,null,null];
 function mashGain(p,b){const g=b!==lastMash[p]?1:.3;lastMash[p]=b;return g;}
 const tagOf=ci=>{const c=G.comps[ci];return c.p<0?'CPU':'P'+(c.p+1);};
@@ -820,7 +838,11 @@ function finishEvent(rows){
  let recBy=-1;
  for(const r of rows){if(G.comps[r.ci].p<0||r.dnf)continue;const prev=REC[key];if(prev==null||(low?r.val<prev:r.val>prev)){REC[key]=r.val;recBy=r.ci;}}
  if(recBy>=0)saveRec();
- G.res={rows,recBy};go('result');
+ const ranks=[],at=Date.now();
+ for(const r of rows){const cm=G.comps[r.ci];if(cm.p<0||r.dnf)continue;
+  const n=hofAdd(key,r.val,cm.ath,at);if(n)ranks.push({ci:r.ci,n});}
+ if(ranks.length)saveHof();
+ G.res={rows,recBy,ranks,hofAt:at};go('result');
  if(G.comps[rows[0].ci].p>=0)jingle([523,659,784,1047]);else jingle([440,523,659]);
 }
 function setupComps(){
@@ -838,7 +860,13 @@ const finalOrder=()=>[0,1,2,3].sort((a,b)=>G.totals[b]-G.totals[a]||a-b);
 function press(p,b){
  audioInit();lit(p,b);
  const s=G.scene;
- if(s==='title'){go('setup');G.row=0;beep(880,.08);return;}
+ if(s==='title'){if(b==='C'){go('setup');G.row=0;beep(880,.08);}else{G.hofBack='title';go('records');beep(660,.06);}return;}
+ if(s==='records'){
+  if(b==='C'){
+   if(G.hofBack==='result'){if(G.ev<G.evs.length-1){go('standings');beep(880,.08);}else startFinal();}
+   else{go('title');beep(880,.08);}
+   return;}
+  G.hofEv=mod(G.hofEv+(b==='A'?-1:1),FULL.length);beep(600,.04);return;}
  if(s==='setup'){
   if(G.row===0){if(b==='A')G.nh=Math.max(1,G.nh-1);else if(b==='B')G.nh=Math.min(4,G.nh+1);else G.row=1;buildPad();}
   else if(G.row===1){if(b==='C')G.row=2;else G.mode=(G.mode+(b==='A'?2:1))%3;}
@@ -853,7 +881,7 @@ function press(p,b){
  if(s==='play'){const c=G.cur;if(p>=G.nh)return;
   if(EV[c.key].type==='turn'){if(p!==c.p)return;if(c.wait){if(b==='C')turnStart(c);return;}if(c.count>0||c.after>0)return;MOD[c.key].inp(c,b);return;}
   if(c.count>0)return;MOD[c.key].inp(c,p,b);return;}
- if(s==='result'){if(b==='C'&&G.st>.8){if(G.ev<G.evs.length-1){go('standings');beep(880,.08);}else startFinal();}return;}
+ if(s==='result'){if(b==='C'&&G.st>.8){G.hofEv=FULL.indexOf(evKey());G.hofBack='result';go('records');beep(880,.08);}return;}
  if(s==='standings'){if(b==='C'&&G.st>.6){G.ev++;go('intro');beep(880,.08);}return;}
  if(s==='final'){if(b==='C'&&G.st>1.2){go('title');beep(880,.08);}}
 }
@@ -878,6 +906,7 @@ function drawTitle(){
  {ctx.font='italic 800 92px '+PX;ctx.textAlign='center';const g=ctx.createLinearGradient(0,175,0,255);g.addColorStop(0,'#ffffff');g.addColorStop(1,'#ffd23f');ctx.save();ctx.shadowColor='rgba(232,65,44,.8)';ctx.shadowBlur=24;ctx.fillStyle=g;ctx.fillText('VELOCITAS',W/2,256);ctx.restore();ctx.fillStyle=C.red;rr(W/2-150,268,300,5,3);ctx.fill();}
  txt(NA+'人の超人　最大4人対戦　全'+FULL.length+'種目',W/2,310,22,C.ink,'center',JP,6);
  ctx.globalAlpha=.55+.45*Math.sin(G.t*4);txt('C ボタンでスタート',W/2,420,24,C.gold,'center',JP,8);ctx.globalAlpha=1;
+ txt('A・B ボタンで歴代記録',W/2,452,17,C.mute,'center',JP,6);
 }
 function drawSetup(){
  drawStadium(G.t*20);ctx.fillStyle='rgba(11,18,48,.72)';ctx.fillRect(0,0,W,H);
@@ -971,7 +1000,32 @@ function drawResult(){
   txt(fmt(key,r.val,r.dnf),700,y+31,15,C.ink,'right',PX);
   txt('+'+r.pts,W-150,y+31,16,C.gold,'right',PX);});
  if(R.recBy>=0&&Math.floor(G.t*4)%2===0)txt('大会新記録！ '+tagOf(R.recBy)+' '+ATH[G.comps[R.recBy].ath].name,W/2,410,24,C.red,'center',JP,6);
- if(G.st>.8)txt(G.ev<G.evs.length-1?'C で総合順位へ':'C で最終結果へ',W/2,464,18,C.ink,'center');
+ {const rk=(R.ranks||[]).filter(x=>x.n>1);   /* 1位は「大会新記録！」で出るので 2位以下を表示 */
+  if(rk.length)txt('歴代'+rk.map(x=>x.n+'位 '+ATH[G.comps[x.ci].ath].name).join('　'),W/2,438,17,C.gold,'center',JP,4);}
+ if(G.st>.8)txt('C で歴代記録へ',W/2,466,18,C.ink,'center');
+}
+function drawRecords(){
+ drawStadium(G.t*60);ctx.fillStyle='rgba(11,18,48,.8)';ctx.fillRect(0,0,W,H);
+ const key=FULL[G.hofEv],list=hofOf(key);
+ const back=G.hofBack==='result';
+ const now=back&&G.res?G.res.hofAt:0;   /* 今の種目で入った記録を強調する */
+ panel(60,26,W-120,484);
+ txt('歴代記録　ベスト10',W/2,68,26,C.gold,'center',JP,6);
+ txt('◀ A',96,106,13,C.mute,'left',PX);txt('B ▶',W-96,106,13,C.mute,'right',PX);
+ txt(EV[key].name,W/2,106,22,C.ink,'center');
+ txt(back&&key===evKey()?'今の種目':(G.hofEv+1)+' / '+FULL.length,W/2,130,11,C.mute,'center',back&&key===evKey()?JP:PX);
+ txt('順位',150,162,12,C.mute);txt('記録',450,162,12,C.mute,'right');txt('選手',486,162,12,C.mute);txt('日時',800,162,12,C.mute,'right');
+ ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(140,170);ctx.lineTo(W-140,170);ctx.stroke();
+ if(!list.length)txt('まだ記録がありません',W/2,300,22,C.mute,'center');
+ else list.forEach((r,i)=>{const y=198+i*30,top=i===0,fresh=!!now&&r.d===now;
+  if(fresh){ctx.fillStyle='rgba(232,65,44,'+(.18+.12*Math.sin(G.t*6))+')';ctx.fillRect(140,y-20,W-280,27);}
+  else if(top){ctx.fillStyle='rgba(255,210,63,.12)';ctx.fillRect(140,y-20,W-280,27);}
+  txt(String(i+1),190,y,13,top?C.gold:C.ink,'right',PX);
+  txt(fmt(key,r.v),450,y,14,top?C.gold:C.ink,'right',PX);
+  txt(r.a||'—',486,y,17,C.ink);
+  txt(fmtDate(r.d),800,y,13,C.mute,'right');
+  if(fresh)txt('NEW',W-116,y,11,C.red,'left',PX);});
+ txt(back?'A・B 種目切替　C で'+(G.ev<G.evs.length-1?'総合順位へ':'最終結果へ'):'A・B 種目切替　C でタイトルへ',W/2,494,16,C.ink,'center');
 }
 function drawStandings(){
  drawStadium(G.t*25);ctx.fillStyle='rgba(11,18,48,.68)';ctx.fillRect(0,0,W,H);
@@ -1031,6 +1085,7 @@ function draw(){
  if(s==='title')drawTitle();else if(s==='setup')drawSetup();else if(s==='select')drawSelect();else if(s==='intro')drawIntro();
  else if(s==='play'){const c=G.cur;MOD[c.key].draw(c);if(EV[c.key].type==='turn')drawTurnOverlay(c);drawCountdown(c);}
  else if(s==='result')drawResult();else if(s==='standings')drawStandings();else if(s==='final')drawFinal();
+ else if(s==='records')drawRecords();
  ctx.restore();
 }
 /* ループは何があっても止めない。次フレームを先に予約してから更新・描画し、
