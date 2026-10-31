@@ -443,7 +443,7 @@
         <button class="btn btn-ghost" id="loadBtn">📂 データを読込</button>
         <input type="file" id="loadFile" accept="application/json,.json,.csv,text/csv" style="display:none;">
       </div>
-      <div class="hint">登録・読込した単語データと出題範囲（開始・終了番号）は、この端末のブラウザに記憶され、次に開いたときに復元されます。ファイルに保存しておくと、別の端末やブラウザでも読込ボタンから同じ単語データを使えます（JSON・CSVどちらのファイルも読込可能）。</div>
+      <div class="hint">登録・読込した単語データと出題範囲（開始・終了番号）・出題モードは、この端末のブラウザに記憶され、次に開いたときに復元されます。ファイルに保存しておくと、別の端末やブラウザでも読込ボタンから同じ単語データを使えます（JSON・CSVどちらのファイルも読込可能）。</div>
 
       <div class="status" id="statusBox">
         <div class="dot"></div>
@@ -530,7 +530,8 @@ function saveState(){
     localStorage.setItem(STORE_KEY, JSON.stringify({
       bank: wordBank,
       start: $('rangeStart').value,
-      end: $('rangeEnd').value
+      end: $('rangeEnd').value,
+      mode: (document.querySelector('input[name=mode]:checked') || {}).value
     }));
   }catch(e){ /* 容量超過やシークレットモードなど保存できない環境では記憶しない */ }
 }
@@ -550,6 +551,10 @@ function restoreState(){
   const s = num(st.start), e = num(st.end);
   if(s) $('rangeStart').value = s;
   if(e) $('rangeEnd').value = e;
+  /* 値が一致するものだけ選ぶ。見つからなければ既定のまま（未選択にしない） */
+  for(const el of document.querySelectorAll('input[name=mode]')){
+    if(el.value === st.mode) el.checked = true;
+  }
 }
 let currentQuiz = [];
 let showAnswers = false;
@@ -889,6 +894,7 @@ $('printBtn').addEventListener('click', ()=>{
 
 $('rangeStart').addEventListener('change', saveState);
 $('rangeEnd').addEventListener('change', saveState);
+for(const el of document.querySelectorAll('input[name=mode]')) el.addEventListener('change', saveState);
 restoreState();
 </script>
 </body>
