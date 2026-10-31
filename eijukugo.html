@@ -454,7 +454,7 @@
         <button class="btn btn-ghost" id="loadBtn">📂 データを読込</button>
         <input type="file" id="loadFile" accept="application/json,.json,.csv,text/csv" style="display:none;">
       </div>
-      <div class="hint">保存しておくと、次回訪問時に読込ボタンから同じ熟語データを使えます（JSON・CSVどちらのファイルも読込可能／ブラウザには保存されません）。</div>
+      <div class="hint">登録・読込した熟語データと出題範囲（開始・終了番号）は、この端末のブラウザに記憶され、次に開いたときに復元されます。ファイルに保存しておくと、別の端末やブラウザでも読込ボタンから同じ熟語データを使えます（JSON・CSVどちらのファイルも読込可能）。</div>
 
       <div class="status" id="statusBox">
         <div class="dot"></div>
@@ -531,6 +531,37 @@
 
 <script>
 let wordBank = []; // {no, en, ja}
+
+/* ---- ブラウザへの記憶（localStorage）----
+   登録・読込した熟語データと開始/終了番号をこの端末のブラウザに保存し、
+   次に開いたときに復元する。シークレットモードや閲覧データの削除では消える。 */
+const STORE_KEY = 'eijukugo-state';
+function saveState(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      bank: wordBank,
+      start: $('rangeStart').value,
+      end: $('rangeEnd').value
+    }));
+  }catch(e){ /* 容量超過やシークレットモードなど保存できない環境では記憶しない */ }
+}
+function restoreState(){
+  let st = null;
+  try{ st = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); }catch(e){ return; }
+  if(!st) return;
+  if(Array.isArray(st.bank)){
+    const bank = st.bank.filter(w=>w && w.no && w.en);
+    if(bank.length){
+      wordBank = bank;
+      $('dataInput').value = wordBank.map(w=>`${w.no},${w.en},${w.ja || ''}`).join('\n');
+      updateStatus();
+    }
+  }
+  const num = (v)=>{ const i = parseInt(v,10); return isNaN(i) || i < 1 ? null : i; };
+  const s = num(st.start), e = num(st.end);
+  if(s) $('rangeStart').value = s;
+  if(e) $('rangeEnd').value = e;
+}
 let currentQuiz = [];
 let showAnswers = false;
 
@@ -573,6 +604,7 @@ $('registerBtn').addEventListener('click', ()=>{
   }
   wordBank = parsed;
   updateStatus();
+  saveState();
 });
 
 $('sampleBtn').addEventListener('click', ()=>{
@@ -585,6 +617,7 @@ $('sampleBtn').addEventListener('click', ()=>{
   $('dataInput').value = sample.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
   wordBank = sample;
   updateStatus();
+  saveState();
 });
 
 $('saveBtn').addEventListener('click', ()=>{
@@ -684,6 +717,7 @@ $('loadFile').addEventListener('change', (e)=>{
       wordBank = data;
       $('dataInput').value = wordBank.map(w=>`${w.no},${w.en},${w.ja}`).join('\n');
       updateStatus();
+      saveState();
     }catch(err){
       alert('ファイルを読み込めませんでした: ' + err.message);
     }
@@ -712,6 +746,7 @@ function shiftRange(delta){
   if(newStart < 1) newStart = 1;
   sEl.value = newStart;
   eEl.value = newStart + span;
+  saveState();
 }
 $('rangePrevBtn').addEventListener('click', ()=> shiftRange(-50));
 $('rangeNextBtn').addEventListener('click', ()=> shiftRange(50));
@@ -875,6 +910,10 @@ $('printBtn').addEventListener('click', ()=>{
   showAnswers = originalShow;
   renderWorksheet(mode, start, end);
 });
+
+$('rangeStart').addEventListener('change', saveState);
+$('rangeEnd').addEventListener('change', saveState);
+restoreState();
 </script>
 </body>
 </html>
